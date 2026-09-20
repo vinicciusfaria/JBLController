@@ -1,0 +1,204 @@
+JBL PARTYLIGHT GATT INSPECTION
+Date: 2026-09-20T14:08:47.941231
+
+======================================================================
+DEVICE: JBL PartyLight Beam
+ADDRESS: 3A:34:F8:3B:5B:0F
+======================================================================
+
+SERVICE
+  UUID: 00001800-0000-1000-8000-00805f9b34fb
+  Description: Generic Access Profile
+
+  CHARACTERISTIC
+    UUID: 00002a00-0000-1000-8000-00805f9b34fb
+    Description: Device Name
+    Properties: read
+
+  CHARACTERISTIC
+    UUID: 00002a01-0000-1000-8000-00805f9b34fb
+    Description: Appearance
+    Properties: read
+
+  CHARACTERISTIC
+    UUID: 00002a04-0000-1000-8000-00805f9b34fb
+    Description: Peripheral Preferred Connection Parameters
+    Properties: read
+
+  CHARACTERISTIC
+    UUID: 00002aa6-0000-1000-8000-00805f9b34fb
+    Description: Central Address Resolution
+    Properties: read
+
+SERVICE
+  UUID: 00001801-0000-1000-8000-00805f9b34fb
+  Description: Generic Attribute Profile
+
+  CHARACTERISTIC
+    UUID: 00002a05-0000-1000-8000-00805f9b34fb
+    Description: Service Changed
+    Properties: indicate
+
+SERVICE
+  UUID: 65786365-6c70-6f69-6e74-2e636f6d0000
+  Description: Unknown
+
+  CHARACTERISTIC
+    UUID: 65786365-6c70-6f69-6e74-2e636f6d0002
+    Description: Unknown
+    Properties: write, write-without-response
+
+  CHARACTERISTIC
+    UUID: 65786365-6c70-6f69-6e74-2e636f6d0001
+    Description: Unknown
+    Properties: notify, read
+
+SERVICE
+  UUID: 0000fea0-0000-1000-8000-00805f9b34fb
+  Description: Google
+
+  CHARACTERISTIC
+    UUID: 0000fea1-0000-1000-8000-00805f9b34fb
+    Description: Intrepid Control Systems: Inc.
+    Properties: write
+
+  CHARACTERISTIC
+    UUID: 0000fea2-0000-1000-8000-00805f9b34fb
+    Description: Intrepid Control Systems: Inc.
+    Properties: notify
+
+
+======================================================================
+DEVICE: JBL PartyLight Stick
+ADDRESS: 08:79:FF:1E:98:19
+======================================================================
+
+SERVICE
+  UUID: 00001800-0000-1000-8000-00805f9b34fb
+  Description: Generic Access Profile
+
+  CHARACTERISTIC
+    UUID: 00002a00-0000-1000-8000-00805f9b34fb
+    Description: Device Name
+    Properties: read
+
+  CHARACTERISTIC
+    UUID: 00002a01-0000-1000-8000-00805f9b34fb
+    Description: Appearance
+    Properties: read
+
+  CHARACTERISTIC
+    UUID: 00002a04-0000-1000-8000-00805f9b34fb
+    Description: Peripheral Preferred Connection Parameters
+    Properties: read
+
+  CHARACTERISTIC
+    UUID: 00002aa6-0000-1000-8000-00805f9b34fb
+    Description: Central Address Resolution
+    Properties: read
+
+SERVICE
+  UUID: 00001801-0000-1000-8000-00805f9b34fb
+  Description: Generic Attribute Profile
+
+  CHARACTERISTIC
+    UUID: 00002a05-0000-1000-8000-00805f9b34fb
+    Description: Service Changed
+    Properties: indicate
+
+SERVICE
+  UUID: 65786365-6c70-6f69-6e74-2e636f6d0000
+  Description: Unknown
+
+  CHARACTERISTIC
+    UUID: 65786365-6c70-6f69-6e74-2e636f6d0002
+    Description: Unknown
+    Properties: write, write-without-response
+
+  CHARACTERISTIC
+    UUID: 65786365-6c70-6f69-6e74-2e636f6d0001
+    Description: Unknown
+    Properties: notify, read
+
+SERVICE
+  UUID: 0000fea0-0000-1000-8000-00805f9b34fb
+  Description: Google
+
+  CHARACTERISTIC
+    UUID: 0000fea1-0000-1000-8000-00805f9b34fb
+    Description: Intrepid Control Systems: Inc.
+    Properties: write
+
+  CHARACTERISTIC
+    UUID: 0000fea2-0000-1000-8000-00805f9b34fb
+    Description: Intrepid Control Systems: Inc.
+    Properties: notify
+
+
+======================================================================
+DEVICE: JBL PartyLight Stick
+ADDRESS: 38:7D:54:F7:95:CD
+======================================================================
+
+SERVICE
+  UUID: 00001800-0000-1000-8000-00805f9b34fb
+  Description: Generic Access Profile
+
+  CHARACTERISTIC
+    UUID: 00002a00-0000-1000-8000-00805f9b34fb
+    Description: Device Name
+    Properties: read
+
+  CHARACTERISTIC
+    UUID: 00002a01-0000-1000-8000-00805f9b34fb
+    Description: Appearance
+    Properties: read
+
+  CHARACTERISTIC
+    UUID: 00002a04-0000-1000-8000-00805f9b34fb
+    Description: Peripheral Preferred Connection Parameters
+    Properties: read
+
+  CHARACTERISTIC
+    UUID: 00002aa6-0000-1000-8000-00805f9b34fb
+    Description: Central Address Resolution
+    Properties: read
+
+SERVICE
+  UUID: 00001801-0000-1000-8000-00805f9b34fb
+  Description: Generic Attribute Profile
+
+  CHARACTERISTIC
+    UUID: 00002a05-0000-1000-8000-00805f9b34fb
+    Description: Service Changed
+    Properties: indicate
+
+SERVICE
+  UUID: 65786365-6c70-6f69-6e74-2e636f6d0000
+  Description: Unknown
+
+  CHARACTERISTIC
+    UUID: 65786365-6c70-6f69-6e74-2e636f6d0002
+    Description: Unknown
+    Properties: write, write-without-response
+
+  CHARACTERISTIC
+    UUID: 65786365-6c70-6f69-6e74-2e636f6d0001
+    Description: Unknown
+    Properties: notify, read
+
+SERVICE
+  UUID: 0000fea0-0000-1000-8000-00805f9b34fb
+  Description: Google
+
+  CHARACTERISTIC
+    UUID: 0000fea1-0000-1000-8000-00805f9b34fb
+    Description: Intrepid Control Systems: Inc.
+    Properties: write
+
+  CHARACTERISTIC
+    UUID: 0000fea2-0000-1000-8000-00805f9b34fb
+    Description: Intrepid Control Systems: Inc.
+    Properties: notify
+
+
