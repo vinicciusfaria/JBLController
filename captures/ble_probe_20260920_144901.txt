@@ -1,0 +1,35 @@
+=== VISKOSTAGE BLE CAPTURE ===
+INÍCIO: 2026-09-20 14:49:01.785552
+
+Conectando STICK: 08:79:FF:1E:98:19
+CONNECTED STICK: 08:79:FF:1E:98:19
+Conectando STICK: 38:7D:54:F7:95:CD
+CONNECTED STICK: 38:7D:54:F7:95:CD
+Conectando BEAM: 2F:A4:B9:0A:6F:EA
+CONNECTED BEAM: 2F:A4:B9:0A:6F:EA
+
+=== DISPOSITIVOS CONECTADOS ===
+
+MONITORANDO STICK 08:79:FF:1E:98:19 -> 65786365-6c70-6f69-6e74-2e636f6d0001
+MONITORANDO STICK 08:79:FF:1E:98:19 -> 0000fea2-0000-1000-8000-00805f9b34fb
+MONITORANDO STICK 38:7D:54:F7:95:CD -> 65786365-6c70-6f69-6e74-2e636f6d0001
+MONITORANDO STICK 38:7D:54:F7:95:CD -> 0000fea2-0000-1000-8000-00805f9b34fb
+MONITORANDO BEAM 2F:A4:B9:0A:6F:EA -> 65786365-6c70-6f69-6e74-2e636f6d0001
+MONITORANDO BEAM 2F:A4:B9:0A:6F:EA -> 0000fea2-0000-1000-8000-00805f9b34fb
+
+============================================================
+MONITORAMENTO INICIADO
+============================================================
+
+O programa está capturando BLE.
+Quando detectar uma mudança, ele perguntará
+se você fez alguma alteração.
+
+Digite ENTER para continuar.
+Digite 'sair' para encerrar.
+
+
+=== ENCERRANDO ===
+Disconnected STICK: 08:79:FF:1E:98:19
+Disconnected STICK: 38:7D:54:F7:95:CD
+Disconnected BEAM: 2F:A4:B9:0A:6F:EA

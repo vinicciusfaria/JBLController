@@ -1,0 +1,39 @@
+=== VISKOSTAGE BLE CAPTURE ===
+INÍCIO: 2026-09-20 15:29:19.552798
+
+Conectando STICK: 04:E7:A3:AB:AC:CA
+CONNECTED STICK: 04:E7:A3:AB:AC:CA
+
+Conectando STICK: 23:59:80:13:8E:F3
+CONNECTED STICK: 23:59:80:13:8E:F3
+
+Conectando BEAM: 13:BE:01:8E:75:1A
+CONNECTED BEAM: 13:BE:01:8E:75:1A
+
+MONITORANDO STICK 04:E7:A3:AB:AC:CA -> 65786365-6c70-6f69-6e74-2e636f6d0001
+MONITORANDO STICK 04:E7:A3:AB:AC:CA -> 0000fea2-0000-1000-8000-00805f9b34fb
+MONITORANDO STICK 23:59:80:13:8E:F3 -> 65786365-6c70-6f69-6e74-2e636f6d0001
+MONITORANDO STICK 23:59:80:13:8E:F3 -> 0000fea2-0000-1000-8000-00805f9b34fb
+MONITORANDO BEAM 13:BE:01:8E:75:1A -> 65786365-6c70-6f69-6e74-2e636f6d0001
+MONITORANDO BEAM 13:BE:01:8E:75:1A -> 0000fea2-0000-1000-8000-00805f9b34fb
+
+============================================================
+MONITORAMENTO INICIADO
+============================================================
+
+Dispositivos conectados:
+- STICK 04:E7:A3:AB:AC:CA
+- STICK 23:59:80:13:8E:F3
+- BEAM 13:BE:01:8E:75:1A
+
+O programa está capturando as notificações BLE.
+
+Quando detectar uma mudança, ele perguntará se você fez alguma alteração.
+
+Digite 'sair' para encerrar.
+
+
+=== ENCERRANDO ===
+Disconnected STICK: 04:E7:A3:AB:AC:CA
+Disconnected STICK: 23:59:80:13:8E:F3
+Disconnected BEAM: 13:BE:01:8E:75:1A

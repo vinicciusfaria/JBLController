@@ -1,0 +1,9 @@
+=== BLE PROBE ===
+GRUPO: STICKS (PAR)
+
+Conectando: JBL PartyLight Stick - 08:79:FF:1E:98:19
+CONNECTED: 08:79:FF:1E:98:19
+Conectando: JBL PartyLight Stick - 38:7D:54:F7:95:CD
+
+=== ENCERRANDO ===
+Disconnected: 08:79:FF:1E:98:19

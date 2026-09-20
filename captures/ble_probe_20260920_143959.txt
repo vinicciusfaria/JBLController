@@ -1,0 +1,9 @@
+=== VISKOSTAGE BLE CAPTURE ===
+INÍCIO: 2026-09-20 14:39:59.613904
+
+Conectando STICK: 38:7D:54:F7:95:CD
+
+=== ERRO ===
+TimeoutError: 
+
+=== ENCERRANDO ===
