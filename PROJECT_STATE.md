@@ -6,120 +6,131 @@ Data da última atualização: 2026-09-30
 
 ## 1. Visão geral
 
-O JBLController é um sistema em desenvolvimento que integra luminárias JBL PartyLight Stick e JBL PartyLight Beam a setups de DJ via Bluetooth Low Energy (BLE). O projeto conta com:
-- Implementação do protocolo BLE proprietário descoberto por engenharia reversa.
-- Backend em Python para controle manual e agendamento de Cues sincronizados com o VirtualDJ.
-- Interface gráfica web em navegador local.
-- Plugin C++ nativo para VirtualDJ para envio de telemetria de áudio e transporte via UDP.
+O JBLController permite operar luminárias JBL PartyLight Stick e JBL PartyLight Beam a partir do computador via Bluetooth Low Energy (BLE), dispensando o uso do aplicativo oficial para celular. O sistema é composto por:
+
+- Uma biblioteca Python para empacotamento GATT e controle de palco.
+- Um agendador (scheduler) com banco SQLite para disparo de efeitos em pontos pré-definidos de músicas.
+- Um servidor web local com painel no navegador.
+- Um plugin em C++ para VirtualDJ que transmite dados de reprodução via UDP.
+
+O foco atual do desenvolvimento é a estabilidade de telemetria durante a reprodução no VirtualDJ e o controle consistente de Cues na interface.
 
 ---
 
 ## 2. Protocolo BLE
 
 ### Confirmado (validado em testes com hardware)
-- **Framing GATT:** Pacotes contíguos iniciados com `0xAA`, seguidos de `Command ID`, `Payload Length` (1 byte), marcador `0x00` e campos TLV (`Field ID`, `Field Length`, `Value`).
-- **UUID de escrita:** `65786365-6c70-6f69-6e74-2e636f6d0002` usando operação ATT Write Command (`0x52`, sem resposta).
-- **UUID de notificação:** `65786365-6c70-6f69-6e74-2e636f6d0001` via GATT Notify.
-- **Comandos de luz (`AA 33`):**
-  - Brilho (`0x45`, 1 byte): valores de `0x00` (0%) a `0x64` (100%).
-  - Cor RGB (`0x32`, 3 bytes): componentes `[RR, GG, BB]` diretos.
-  - Modo/Efeito (`0x31`, 1 byte): ativação dos efeitos suportados pelo firmware.
-  - Transição de cor / Static (`0x36`, 1 byte): `0x01` para cor sólida no Stick em conjunto com o modo `0x15` (STATIC).
-  - Luz traseira do Stick (`0x49`, 1 byte): `0x00` desliga, `0x01` liga.
-  - Velocidade do efeito (`0x46`, 1 byte): escala de `0x00` a `0x64`.
-- **Comandos de hardware (`AA 13`):**
-  - Detecção de som pelo microfone interno (`0x45`, 1 byte): `0x00` desliga, `0x01` liga.
-- **Notificações recebidas:**
-  - `AA 32`: estado da iluminação, incluindo lista de modos suportados no campo `0x4A`.
-  - `AA 12`: telemetria do dispositivo (endereço MAC em `0x37`, número de série em `0x40`, versão de firmware em `0x41`).
-- **Diferenças físicas de hardware:**
-  - PartyLight Stick suporta modo estático (`STATIC` / `0x15`), luz traseira (`0x49`) e efeitos verticais de torre (ex: `CAMPFIRE`, `GRAVITY`, `LIGHTNING`).
-  - PartyLight Beam é um projetor motorizado, não possui luz traseira física e ignora o modo estático `0x15`, exigindo efeitos dinâmicos como `NEON`, `LOOP` ou `BOUNCE`.
+
+| Recurso | Detalhes | Modelo validado |
+|---|---|---|
+| **Framing GATT** | Pacotes contíguos: `[0xAA] [Command ID] [Payload Len] [0x00] [Field ID] [Field Len] [Value...]` | Stick e Beam |
+| **Canal de escrita** | UUID `65786365-6c70-6f69-6e74-2e636f6d0002` via ATT Write Command (`0x52`, sem resposta) | Stick e Beam |
+| **Canal de notificação** | UUID `65786365-6c70-6f69-6e74-2e636f6d0001` via GATT Notify | Stick e Beam |
+| **Controle de Brilho** | Field `0x45` em `AA 33`, escala de `0x00` (0%) a `0x64` (100%) | Stick e Beam |
+| **Controle de Cor RGB** | Field `0x32` em `AA 33`, 3 bytes `[RR, GG, BB]` | Stick e Beam |
+| **Seleção de Modo/Efeito** | Field `0x31` em `AA 33`, 1 byte com o ID do efeito do firmware | Stick e Beam |
+| **Cor Sólida Estática** | Modo `0x15` (`STATIC`) combinado com `PatternLooping = 0x01` (`0x36`) | Apenas Stick (o Beam ignora o modo `0x15`) |
+| **Velocidade de Animação** | Field `0x46` em `AA 33`, escala de `0x00` a `0x64` | Stick |
+| **Luz Traseira** | Field `0x49` em `AA 33`, `0x00` desliga e `0x01` liga | Apenas Stick (o Beam não possui LED traseiro) |
+| **Detecção de Som** | Field `0x45` em `AA 13`, `0x00` desliga e `0x01` liga o microfone interno | Stick |
+| **Lista de Modos Suportados** | Field `0x4A` em notificações `AA 32`, informa os IDs suportados pelo modelo | Stick (20 modos) e Beam (7 modos) |
+| **Metadados do Hardware** | Notificação `AA 12`: MAC (`0x37`), Serial (`0x40`), Firmware (`0x41`) | Stick e Beam |
 
 ### Hipóteses (observadas em código ou logs, pendentes de confirmação física)
-- **`0x47` em `AA 33` (`speakerIDtoLight`):** Carrega 2 bytes. Hipótese de ser usado pelo aplicativo oficial para identificar a posição espacial do dispositivo no palco (ex: esquerda/direita).
-- **`0x46` em `AA 13` (`danceMode`):** Mapeado no APK oficial como booleano, mas seu efeito prático na iluminação ainda não foi diferenciado da detecção de som comum.
-- **`0x3C` em `AA 13` (`AuracastMode`):** Mapeado no APK oficial, relacionado a recursos de transmissão LE Audio da JBL. Não testado por falta de caixa PartyBox compatível.
-- **Leitura de Bateria (`AA 9D` / `AA 9E`):** Documentada no código do aplicativo para a Beam, ainda não implementada no controlador Python.
+
+- **`speakerIDtoLight` (`0x47` em `AA 33`):** 2 bytes observados no APK. Hipótese de ser usado para posicionamento espacial no palco (ex: esquerda/direita).
+- **`danceMode` (`0x46` em `AA 13`):** Booleano mapeado no APK. Efeito visual prático ainda não diferenciado da detecção de som padrão.
+- **`AuracastMode` (`0x3C` em `AA 13`):** Mapeado no APK em relação ao recurso de broadcast LE Audio com caixas PartyBox. Não testado por falta de equipamento transmissor compatível.
+- **Leitura de Bateria (`AA 9D` / `AA 9E`):** Identificada no APK para a PartyLight Beam, ainda não implementada no código Python.
 
 ### Ainda não determinado
-- **Opcodes `0x25` a `0x2A` (DFU):** Identificados como comandos de atualização de firmware (OTA). Não devem ser testados para evitar corrupção de firmware.
-- Comportamento de agrupamento nativo entre múltiplas caixas gerido diretamente pelo firmware sem controle do host.
+
+- **Comandos de Firmware OTA / DFU (`0x25` a `0x2A`):** Identificados no APK, mas categorizados como perigosos para envio manual. Não devem ser disparados para evitar risco de travar a memória flash dos aparelhos.
 
 ---
 
 ## 3. Backend Python (`src/jbl_controller/`)
 
-### BLE (`partylight.py` e `protocol.py`)
-- `protocol.py`: Codificação e decodificação completas para comandos `AA 33`, `AA 13`, `AA 31` e `AA 11`. Validado com testes unitários.
-- `partylight.py`: Conexão individual assíncrona com reconexão automática em caso de desconexão.
-- *Status:* Funcional em laboratório com PartyLight Stick e Beam.
+### BLE (`protocol.py` e `partylight.py`)
+- **Estado:** Implementado e testado.
+- `protocol.py`: Monta e decodifica pacotes binários para comandos `AA 33`, `AA 13`, `AA 31` e `AA 11`. Coberto por testes unitários em `tests/test_protocol.py`.
+- `partylight.py`: Gerencia a conexão com cada aparelho via Bleak. Possui loop de reconexão automática com intervalo fixo de 5 segundos.
 
-### Stage (`stage.py` e `group.py`)
-- Agrupamento de dispositivos e distribuição de comandos em lote.
-- Aplicação de regras de fallback de efeitos quando um comando não é suportado pelo hardware de destino.
-- *Status:* Funcional.
+### Stage e Agrupamento (`stage.py` e `group.py`)
+- **Estado:** Implementado e testado.
+- Permite despachar comandos de cor, brilho e efeitos para múltiplas luminárias de uma só vez.
+- Implementa regra de fallback: se um efeito enviado não constar na lista de modos suportados do aparelho (como cor sólida no Beam), converte automaticamente para um modo suportado (`NEON` ou `LOOP`).
 
-### Playback (`playback.py`)
-- Servidor UDP ouvindo na porta `9666`.
-- Decodifica pacote JSON da telemetria do VirtualDJ.
-- Gerenciamento de deck master ativo por análise de faders de volume, crossfader, equalização de graves (`eq_low`) e High-Pass `filter`.
-- Fallback para relógio local (mock) quando o VirtualDJ deixa de enviar pacotes por mais de 1.5s.
-- *Status:* Funcional e validado com testes unitários automatizados.
+### Playback e Telemetria (`playback.py`)
+- **Estado:** Implementado e testado.
+- Abre servidor UDP ouvindo na porta 9666.
+- Recebe mensagens JSON do plugin do VirtualDJ e mantém o estado de reprodução dos Decks 1 e 2.
+- Determina o Deck Master ativo com base nos faders de volume e crossfader, com histerese para evitar oscilações em transições lentas.
+- Monitora os botões de grave (`eq_low`) e o filtro bipolar (`filter`) para registrar cortes de grave na variável `bass_cut`.
+- Se o VirtualDJ parar de enviar dados por mais de 1,5s com a música tocando, assume modo de simulação local (mock) baseado no relógio do computador.
 
-### Database (`faria_db.py`)
-- Persistência SQLite local em `faria_fx.db`.
-- Tabelas: `tracks`, `track_aliases` e `cues`.
-- Armazena Cues com tempo em milissegundos e posição musical em batidas (`beat_pos`).
-- *Status:* Funcional.
+### Banco de Dados (`faria_db.py`)
+- **Estado:** Implementado e testado.
+- SQLite local (`faria_fx.db`) com tabelas: `tracks`, `track_aliases` e `events`.
+- Armazena Cues com tempo em milissegundos e posição relativa em batidas (`beat_pos`).
+- Operações de adicionar, editar, excluir e consultar eventos implementadas e testadas.
 
-### Scheduler (`faria_engine.py`)
-- Loop periódico de verificação a ~50 Hz.
-- Dispara Cues quando a reprodução atinge a posição da batida cadastrada.
-- Sincroniza o estado em saltos manuais (seeks/rewinds), reaplicando o último evento válido anterior à nova posição.
-- *Status:* Funcional, com correção aplicada para re-disparo após rewinds antes de pontos de corte.
+### Agendador de Cues (`faria_engine.py`)
+- **Estado:** Implementado e testado.
+- Executa verificação periódica em loop assíncrono a cada ~20 ms (~50 Hz).
+- Compara a posição atual em batidas da música com os Cues cadastrados e dispara os efeitos correspondentes.
+- Trata saltos na música (seeks para frente ou para trás): quando a agulha é movida, busca o último Cue válido anterior à nova posição e aplica o efeito imediatamente.
+- Possui correção validada por teste unitário para rearmar eventos após rewinds anteriores ao ponto de disparo.
 
 ---
 
 ## 4. Plugin VirtualDJ (`virtualdj_plugin/`)
 
-- Plugin de efeito sonoro DSP em C++ (`FariaFX.dll`) baseado no SDK 8 oficial do VirtualDJ.
-- Thread em segundo plano enviando telemetria a 30 FPS para `127.0.0.1:9666` via UDP.
-- Dados extraídos:
-  - Tempo decorrido (`get_time elapsed`) e tempo total.
-  - Batida contínua absoluta calculada por `((timeMs - firstBeatMs) / 60000.0) * bpm` (substituiu o uso de `SongPosBeats`, que reiniciava dentro de cada compasso).
-  - Estado de reprodução, BPM e pitch.
-  - Volumes de canais (`deck 1 volume`, `deck 2 volume`), crossfader e master deck.
-  - Níveis de graves (`eq_low`) e filtros de frequência (`filter`) dos Decks 1 e 2.
-- *Status:* Compilado e validado em execução conjunta com o VirtualDJ 2021/2023.
+- **Estado:** Implementado, compilado e testado em execução real com VirtualDJ.
+- Desenvolvido em C++14 implementando a interface `IVdjPluginDsp8` do SDK do VirtualDJ.
+- Compilação via MSVC gerando `FariaFX.dll`.
+- Uma thread em segundo plano envia pacotes UDP JSON a 30 FPS para `127.0.0.1:9666`.
+- Dados extraídos e transmitidos:
+  - Caminho do arquivo (`get_filepath`).
+  - Tempo decorrido em ms (`get_time elapsed`) e tempo total (`get_time total`).
+  - Posição contínua em batidas, calculada a partir de `((timeMs - firstBeatMs) / 60000.0) * bpm` (substituiu o uso de `SongPosBeats`, que reiniciava dentro do compasso de 4 tempos).
+  - Estado de reprodução (`play`), BPM e pitch.
+  - Níveis de fader dos canais (`deck 1 volume`, `deck 2 volume`), fader atual (`volume`) e crossfader.
+  - Identificação de canal com memorização em cache (`cachedDeck`) para evitar trocas erráticas durante manipulação dos faders.
+  - Níveis de equalização de graves (`deck 1 eq_low`, `deck 2 eq_low`) e filtros bipolares (`deck 1 filter`, `deck 2 filter`).
 
 ---
 
-## 5. Interface Web (`src/jbl_controller/static/index.html`)
+## 5. Interface Web (`src/jbl_controller/static/index.html` e `web_app.py`)
 
-- Painel de controle em página única servido via aiohttp.
-- Comunicação bidirecional com o backend via WebSockets.
-- Ajuste de cor por roda de cores (canvas), sliders de brilho e velocidade.
-- Tabela de Cues com visualização em compassos (Bars, ex: `17.1`).
-- Função de preview físico: ao clicar em copiar ou editar um Cue, o comando de cor e efeito é enviado imediatamente às luminárias para conferência visual.
-- *Status:* Funcional.
+- **Estado:** Implementado e testado.
+- Servidor HTTP e WebSocket provido por `aiohttp` rodando em `http://localhost:8080`.
+- Roda de cores interativa em canvas para ajuste de cor.
+- Sliders de controle direto de brilho e velocidade com envio de comandos em tempo real.
+- Botões de macros rápidas: Blackout, Cor Sólida, Strobo e Fuego.
+- Tabela de Cues com exibição em compassos (Bars, ex: `17.1`).
+- Função de pré-visualização física: clicar em copiar ou editar um Cue aplica imediatamente o visual daquele evento nas luminárias conectadas.
 
 ---
 
 ## 6. Testes
 
-- 26 testes unitários automatizados cobrindo:
-  - Enquadramento e parsing do protocolo (`test_protocol.py`).
-  - Lógica de presets e fallbacks (`test_presets.py`).
-  - Conexão e métodos do PartyLight (`test_partylight.py`).
-  - Sincronização do scheduler, transições de master deck e banco de Cues (`test_faria.py`).
-- Execução com 100% de aprovação via `python -m unittest discover tests`.
+- **Estado:** 26 testes automatizados implementados e aprovados (100% de sucesso).
+- Arquivos de teste:
+  - `tests/test_protocol.py`: valida enquadramento `0xAA`, tamanhos de payload e decodificação TLV.
+  - `tests/test_presets.py`: valida montagem de macros e regras de compatibilidade entre modelos.
+  - `tests/test_partylight.py`: valida inicialização, conexão mock e chamadas de métodos da luminária.
+  - `tests/test_faria.py`: valida persistência de Cues no SQLite, agendamento de eventos, compensação de latência, saltos na linha do tempo (seeks/rewinds) e regras de transição de master deck no playback.
+- Comando de execução:
+  ```powershell
+  $env:PYTHONPATH="src"; python -m unittest discover tests
+  ```
 
 ---
 
 ## 7. Próximos passos
 
-1. Implementar leitura do nível de bateria (`AA 9D` / `AA 9E`) na PartyLight Beam.
-2. Investigar o comportamento prático do campo `danceMode` (`0x46` em `AA 13`).
-3. Adicionar recurso de importação e exportação de Cues em arquivos JSON portáveis.
-4. Avaliar proteção contra congestionamento de fila BLE em movimentações contínuas e rápidas de faders.
+1. **Debounce em faders:** Adicionar limitação de taxa (rate limiting) para evitar acúmulo de requisições BLE durante movimentações muito rápidas de faders.
+2. **Leitura de bateria:** Implementar o envio de `AA 9D` e o parsing da notificação `AA 9E` para exibir a porcentagem de bateria do PartyLight Beam na interface.
+3. **Modo Live:** Criar opção para desativar a simulação por relógio local (mock) quando o VirtualDJ perder conexão durante uma apresentação.
+4. **Exportação de Cues:** Permitir salvar e carregar Cues de faixas em arquivos JSON portáveis.

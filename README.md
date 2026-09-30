@@ -1,100 +1,119 @@
 # JBLController
 
-Controlador em Python e C++ para os dispositivos de iluminação **JBL PartyLight Stick** e **JBL PartyLight Beam**, com suporte a controle manual via interface web e automação de iluminação sincronizada por timecode para o **VirtualDJ**. O projeto nasceu para superar as limitações do **JBL One**, que não permite o controle simultâneo de Sticks e Beams sem uma caixa JBL com Auracast e é de uso exclusivo para celulares. O software faz engenharia reversa do protocolo Bluetooth Low Energy (BLE) dos dispositivos, permitindo um maior controle sobre a iluminação, além de automatizar o timecode em tempo real sincronizado com o **VirtualDJ**.
+Controlador em Python e C++ para luminárias **JBL PartyLight Stick** e **JBL PartyLight Beam**, com interface web local e sincronização de efeitos de iluminação com o **VirtualDJ**.
 
 ---
 
-## 1. O que é o projeto
+## 1. O que é o JBLController?
 
-O JBLController é um sistema para gerenciar e automatizar as luzes JBL PartyLight Stick e JBL PartyLight Beam a partir de um computador, sem depender do aplicativo móvel JBL One. O projeto é composto por:
+O JBLController é um software que permite controlar luminárias JBL PartyLight diretamente do computador, usando Bluetooth Low Energy (BLE). Ele inclui:
 
-- Uma biblioteca Python que implementa o protocolo Bluetooth Low Energy (BLE) das luminárias.
-- Um servidor local com interface web para controle manual de cores, brilho, velocidade e efeitos.
-- Um mecanismo de automação (scheduler) que dispara mudanças de iluminação em posições específicas de faixas musicais.
-- Um plugin nativo em C++ para VirtualDJ que envia telemetria de reprodução em tempo real para o controlador via UDP.
-
----
-
-## 2. Motivação
-
-O aplicativo oficial da JBL (JBL One) é voltado para uso doméstico em smartphones: ele não oferece integração com softwares de DJ, não possui suporte a automação de iluminação sincronizada com músicas e não expõe uma API para controle externo.
-
-Este projeto foi criado para permitir que DJs e operadores de iluminação utilizem os PartyLights como parte de um setup de palco, sincronizando efeitos visuais com os pontos estruturais das músicas (intros, builds, drops e transições) tocadas no VirtualDJ.
+- Uma biblioteca em Python que empacota e envia comandos no protocolo proprietário das luminárias.
+- Um servidor web local com painel no navegador para ajuste manual de cores, brilho, velocidade e efeitos.
+- Um agendador de eventos (scheduler) que dispara mudanças de iluminação em pontos pré-definidos das músicas tocadas no VirtualDJ.
+- Um plugin em C++ para o VirtualDJ que envia dados de reprodução (tempo, BPM, batidas e faders) para o controlador via rede local (UDP).
 
 ---
 
-## 3. Funcionalidades atuais
+## 2. Por que ele existe?
 
-### Controle de hardware (BLE)
-- Conexão e controle simultâneo de múltiplos dispositivos PartyLight Stick e Beam.
-- Ajuste de cor base (RGB), brilho geral (0 a 100%) e velocidade de animação.
-- Seleção de modos de efeito suportados pelo firmware de cada modelo.
-- Fallback automático de efeitos: comandos incompatíveis com o Beam (como cores estáticas lineares) são mapeados para alternativas dinâmicas compatíveis (como NEON ou LOOP).
-- Controle da luz traseira independente no PartyLight Stick.
-- Ativação e desativação do microfone interno para reação ao som (Sound Reactive).
-- Reconexão automática em caso de perda temporária de sinal BLE.
+O aplicativo oficial da JBL (JBL One) funciona apenas em smartphones e foi desenhado para uso doméstico. Ele não oferece integração com programas de DJ, não possui suporte a timecode ou automação por batidas e não expõe uma interface de controle para terceiros.
 
-### Automação de Cues e Timecode
-- Banco de dados SQLite local (`faria_fx.db`) para armazenar Cues vinculados a cada faixa musical.
-- Notação de tempo musical em compassos e tempos (Bars, ex: `17.1`).
-- Disparo de Cues baseado na posição de reprodução recebida do VirtualDJ.
-- Suporte a seeks e rewinds: quando a agulha é movida, o estado de iluminação é recalculado para corresponder ao último ponto da linha do tempo.
-- Pré-visualização física: ao clicar em copiar ou editar um Cue na interface web, as luzes conectadas assumem imediatamente o preset selecionado para conferência visual.
-
-### Painel Web
-- Interface em página única acessível pelo navegador (`http://localhost:8080`).
-- Color wheel em canvas para seleção de cores.
-- Controles deslizantes de brilho e velocidade com atualização bidirecional.
-- Botões de macros rápidas (Blackout, Cor Sólida, Strobo, Fuego).
-- Gerenciamento de Cues da faixa atual (adicionar, editar, copiar, ativar/desativar e excluir).
+O objetivo do JBLController é permitir que essas luminárias sejam usadas como parte de um setup de iluminação de palco ou estúdio, trocando de cor e efeito de acordo com a música em execução no VirtualDJ, sem necessidade de operação manual contínua durante a apresentação.
 
 ---
 
-## 4. Arquitetura
+## 3. Dispositivos suportados
 
-O sistema é dividido em três camadas:
+- **JBL PartyLight Stick:** Suporte a controle de cor RGB, brilho, velocidade, efeitos nativos da torre de LEDs, modo de cor sólida contínua e luz traseira branca independente.
+- **JBL PartyLight Beam:** Suporte a controle de cor RGB, brilho e modos de projeção dinâmica (como NEON e LOOP). O Beam não possui LED traseiro e não suporta o modo de cor sólida estática (`STATIC`), de modo que comandos de cor fixa são mapeados para efeitos em movimento compatíveis.
+
+---
+
+## 4. O que já funciona?
+
+### Comunicação BLE e controle manual
+- Descoberta e conexão simultânea com múltiplos dispositivos PartyLight Stick e Beam.
+- Envio de comandos de cor RGB, nível de brilho (0 a 100%) e velocidade de animação.
+- Seleção de modos de animação suportados pelo firmware de cada aparelho.
+- Ativação da luz traseira no PartyLight Stick.
+- Ativação e desativação do microfone interno para reação ao som.
+- Reconexão automática em segundo plano caso uma luminária perca sinal temporariamente.
+
+### Automação com VirtualDJ
+- Recepção contínua de telemetria do VirtualDJ via UDP na porta 9666 (30 atualizações por segundo).
+- Rastreamento contínuo de batidas musicais em formato de compasso (Bars, ex: `17.1`).
+- Identificação do deck ativo com base na posição dos faders de volume e crossfader.
+- Detecção de corte de frequências graves através dos botões de EQ Low e do filtro bipolar (High-Pass).
+- Disparo de Cues salvos em banco SQLite local (`faria_fx.db`) quando a música atinge o tempo configurado.
+- Tratamento de mudanças de posição (seeks e rewinds), rearmando o estado de iluminação correspondente ao trecho atual da música.
+
+### Interface Web
+- Painel acessível pelo navegador em `http://localhost:8080`.
+- Roda de cores em canvas para seleção de tons.
+- Sliders para controle direto de brilho e velocidade.
+- Tabela de Cues com cadastro, edição, exclusão e cópia de eventos.
+- Pré-visualização física: ao clicar em copiar ou editar um Cue, as luzes conectadas assumem imediatamente as cores e efeitos daquele evento para conferência visual.
+
+---
+
+## 5. Como o sistema é organizado?
+
+A estrutura de arquivos do projeto é a seguinte:
 
 ```text
-[ VirtualDJ ]
-      │ (Plugin C++ FariaFX.dll - UDP 30 FPS / porta 9666)
-      ▼
-[ Backend Python (jbl_controller) ]
-      ├── playback.py     -> Recebe e normaliza telemetria do VirtualDJ
-      ├── faria_engine.py -> Scheduler de timecode e sincronização de Cues
-      ├── faria_db.py     -> Persistência SQLite de faixas e eventos
-      ├── controller.py   -> Máquina de estados da mesa de controle
-      ├── stage.py        -> Gerenciamento do conjunto de luminárias e fallbacks
-      └── partylight.py   -> Comunicação GATT BLE via Bleak
-      │ (WebSockets / HTTP)
-      ▼
-[ Interface Web (Browser) ]
+JBLController/
+├── src/jbl_controller/
+│   ├── protocol.py         # Codificação e decodificação de pacotes TLV (framing 0xAA)
+│   ├── partylight.py       # Conexão GATT individual com cada aparelho via Bleak
+│   ├── group.py            # Agrupamento lógico de luminárias
+│   ├── stage.py            # Coordenação de palco e fallbacks entre Stick e Beam
+│   ├── controller.py       # Estado da mesa, fila de cores e execução de macros
+│   ├── playback.py         # Servidor UDP para recepção de telemetria do VirtualDJ
+│   ├── faria_db.py         # Banco SQLite de faixas, nomes alternativos e Cues
+│   ├── faria_engine.py     # Agendador periódico de eventos de iluminação
+│   ├── patterns.py         # Enumeração dos modos de animação do firmware
+│   ├── exceptions.py       # Exceções personalizadas da biblioteca
+│   ├── web_app.py          # Servidor HTTP e WebSocket com aiohttp
+│   └── static/
+│       └── index.html      # Interface web em página única (HTML5, CSS, JS)
+├── virtualdj_plugin/
+│   ├── src/
+│   │   ├── faria_vdj_plugin.cpp # Plugin nativo DSP para VirtualDJ (C++14)
+│   │   ├── FariaFX.def          # Definições de exportação da DLL
+│   │   └── vdjPlugin8.h         # Header do SDK do VirtualDJ
+│   ├── build.bat                # Script de compilação direta via MSVC
+│   ├── CMakeLists.txt           # Configuração de compilação CMake
+│   ├── FariaFX.dll              # Binário compilado pronto para uso
+│   └── README.md                # Documentação técnica do plugin
+├── tests/                       # Testes unitários automatizados
+├── examples/
+│   ├── run_web.py               # Script principal de execução da interface web
+│   └── demo_stage.py            # Exemplo de controle em linha de comando
+├── captures/                    # Logs de pacotes brutos capturados em laboratório
+├── docs/                        # Documentação detalhada de engenharia reversa
+├── PROTOCOL.md                  # Especificação técnica do protocolo BLE
+├── PROJECT_STATE.md             # Estado detalhado de cada componente do sistema
+├── TODO.md                      # Lista de tarefas ativas
+├── GEMINI.md                    # Instruções de desenvolvimento
+└── CHATGPT.md                   # Papel de revisão consultiva
 ```
-
-### Componentes principais
-
-- `src/jbl_controller/protocol.py`: Codificação e decodificação de pacotes TLV binários com framing `0xAA`.
-- `src/jbl_controller/partylight.py`: Gerenciamento da conexão BLE com cada luminária individual via Bleak.
-- `src/jbl_controller/stage.py`: Abstração de palco que distribui comandos para múltiplos dispositivos e aplica regras de compatibilidade de hardware.
-- `src/jbl_controller/controller.py`: Estado atual da mesa, fila de cores e execução de macros.
-- `src/jbl_controller/playback.py`: Servidor UDP que recebe os dados de transporte do VirtualDJ e determina o deck master ativo.
-- `src/jbl_controller/faria_engine.py`: Loop periódico (~50 Hz) que compara a posição atual da música com a lista de Cues cadastrados e dispara as alterações.
-- `src/jbl_controller/web_app.py`: Servidor HTTP e WebSocket baseado em aiohttp.
-- `virtualdj_plugin/`: Código-fonte C++ do plugin DSP para VirtualDJ.
 
 ---
 
-## 5. Instalação e execução
+## 6. Como instalar?
 
 ### Pré-requisitos
-- Python 3.10 ou superior no Windows.
-- Adaptador Bluetooth compatível com Bluetooth Low Energy (BLE 4.0+).
-- Dispositivos JBL PartyLight Stick e/ou Beam ligados e próximos ao computador.
+- Sistema operacional Windows 10 ou 11 (64 bits).
+- Python 3.10 ou superior instalado.
+- Adaptador Bluetooth compatível com Bluetooth Low Energy (BLE 4.0 ou superior).
+- Pelo menos um dispositivo JBL PartyLight Stick ou Beam ligado próximo ao computador.
 
-### Instalação
+### Passo a passo
 
-1. Clone o repositório:
+1. Clone o repositório ou baixe o código-fonte:
 ```powershell
-git clone https://github.com/seu-usuario/JBLController.git
+git clone https://github.com/vinicciusfaria/JBLController.git
 cd JBLController
 ```
 
@@ -104,70 +123,54 @@ python -m venv .venv
 .venv\Scripts\activate
 ```
 
-3. Instale as dependências:
+3. Instale as bibliotecas necessárias:
 ```powershell
 pip install bleak aiohttp
 ```
 
-### Execução
+---
 
-Para iniciar o servidor web e o controlador:
+## 7. Como executar?
+
+1. Verifique se o Bluetooth do computador está ativado e as luminárias estão ligadas.
+2. Inicie o servidor:
 ```powershell
 python examples/run_web.py
 ```
-
-Abra o navegador em `http://localhost:8080`. Se houver luminárias ligadas no alcance do Bluetooth, a conexão será estabelecida automaticamente na inicialização.
+3. O terminal fará a busca por aparelhos com o nome "PartyLight" e tentará se conectar. Caso não encontre nenhum, o programa entrará em modo de demonstração (permitindo testar a interface e a integração com o VirtualDJ sem luminárias físicas).
+4. Abra o navegador e acesse:
+```text
+http://localhost:8080
+```
 
 ---
 
-## 6. Integração com VirtualDJ
+## 8. Como funciona a integração com VirtualDJ?
 
-O VirtualDJ comunica-se com o JBLController através de um plugin nativo de efeito sonoro (`FariaFX.dll`), que transmite dados de reprodução para `127.0.0.1:9666`.
+A integração é feita por um plugin compilado em C++ (`FariaFX.dll`) que roda dentro do VirtualDJ como efeito sonoro.
 
 ### Instalação do plugin
-
-Copie o arquivo pré-compilado para a pasta de plugins do VirtualDJ:
+Copie a DLL pré-compilada para a pasta de plugins do VirtualDJ no Windows:
 ```powershell
 copy virtualdj_plugin\FariaFX.dll "%LOCALAPPDATA%\VirtualDJ\Plugins64\SoundEffect\FariaFX.dll"
 ```
 
-Caso queira recompilar a partir do código-fonte:
-1. Obtenha o header `vdjPlugin8.h` no portal de desenvolvedores do VirtualDJ e coloque-o em `virtualdj_plugin/src/`.
-2. Execute o script de compilação:
-```powershell
-cd virtualdj_plugin
-.\build.bat
-```
-
-### Ativação no VirtualDJ
+### Ativação
 1. Abra o VirtualDJ.
-2. No slot de efeitos de som de cada deck (ou na saída Master), ative o efeito **FariaFX**.
-3. O plugin iniciará o envio de telemetria contendo:
-   - Caminho do arquivo da música.
-   - Posição decorrida em milissegundos e tempo total.
-   - Posição em batidas (calculada a partir do primeiro tempo da grade e do BPM).
-   - Estado de reprodução (play/pause), pitch e BPM.
-   - Volumes de fader, crossfader, equalização de graves e filtro.
-
-O backend Python seleciona automaticamente qual deck é o dominante com base na posição dos faders e do crossfader.
+2. No painel de efeitos de som de um deck ou no slot Master, ative o efeito **FariaFX**.
+3. O plugin cria uma thread secundária que consulta dados do deck a cada ~33 ms (30 FPS) e envia um pacote JSON via UDP para `127.0.0.1:9666`.
+4. O backend do JBLController (`playback.py`) recebe os pacotes e repassa as informações para o agendador (`faria_engine.py`), que sincroniza a linha do tempo e dispara os Cues configurados.
 
 ---
 
-## 7. Testes
+## 9. Onde estão os documentos técnicos?
 
-Para executar a suíte de testes unitários:
-```powershell
-$env:PYTHONPATH="src"; python -m unittest discover tests
-```
+Para consultar dados de engenharia reversa, formato de pacotes e decisões de implementação:
 
----
-
-## 8. Documentação técnica
-
-Para detalhes sobre a engenharia reversa e a arquitetura do projeto:
-
-- [PROTOCOL.md](PROTOCOL.md): Estrutura de pacotes GATT, opcodes, tabela TLV e diferenças entre Stick e Beam.
-- [PROJECT_STATE.md](PROJECT_STATE.md): Estado detalhado de cada componente do sistema, separando o que foi confirmado em hardware do que ainda é hipótese.
-- [docs/LIGHT_MODES.md](docs/LIGHT_MODES.md): Catálogo de IDs de efeitos e descrições dos padrões visuais.
-- [docs/decisions.md](docs/decisions.md): Registro de decisões técnicas tomadas durante o desenvolvimento.
-- [docs/AUDITORIA_DE_RISCO_LIVE.md](docs/AUDITORIA_DE_RISCO_LIVE.md): Análise de pontos de falha e procedimentos operacionais para apresentações ao vivo.
+- [PROTOCOL.md](PROTOCOL.md): Estrutura completa de pacotes GATT, opcodes, tabela TLV e diferenças entre Stick e Beam.
+- [PROJECT_STATE.md](PROJECT_STATE.md): Estado atual de cada módulo, separando o que foi testado em hardware do que ainda é hipótese.
+- [TODO.md](TODO.md): Lista de pendências, melhorias em andamento e pontos em investigação.
+- [docs/LIGHT_MODES.md](docs/LIGHT_MODES.md): Tabela de IDs de animação do firmware e seus comportamentos visuais.
+- [docs/decisions.md](docs/decisions.md): Registro de decisões arquiteturais do projeto.
+- [docs/AUDITORIA_DE_RISCO_LIVE.md](docs/AUDITORIA_DE_RISCO_LIVE.md): Análise técnica de riscos operacionais e contingências para apresentações ao vivo.
+- [virtualdj_plugin/README.md](virtualdj_plugin/README.md): Detalhes de compilação e payload UDP do plugin para VirtualDJ.
