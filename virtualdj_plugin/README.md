@@ -1,4 +1,4 @@
-# VISKO Light FX - VirtualDJ Plugin
+# FARIA Light FX - VirtualDJ Plugin
 
 Este é um plugin nativo em C++ para VirtualDJ 8. Ele extrai as informações do Master Deck e transmite assincronamente (sem atrasar a UI ou o áudio do VDJ) via UDP na porta `9666`.
 
@@ -14,15 +14,15 @@ Este é um plugin nativo em C++ para VirtualDJ 8. Ele extrai as informações do
    cmake ..
    cmake --build . --config Release
    ```
-   Isso gerará o arquivo `ViskoVDJ.dll` na pasta `Release`.
+   Isso gerará o arquivo `FariaVDJ.dll` na pasta `Release`.
 
-3. **Usando Visual Studio diretamente:**
-   Crie um projeto de Biblioteca Dinâmica (DLL) vazio, adicione `visko_vdj_plugin.cpp` e defina `ws2_32.lib` nas dependências do Linker.
+3. **Usando build.bat ou Visual Studio diretamente:**
+   Execute `build.bat` para compilar diretamente via MSVC `cl` para `FariaFX.dll`.
 
 ## Onde Instalar
-Copie o arquivo gerado `ViskoVDJ.dll` para a pasta de plugins do seu VirtualDJ.
+Copie o arquivo gerado `FariaFX.dll` para a pasta de plugins do seu VirtualDJ.
 No Windows, geralmente fica em:
-`C:\Users\SEU_USUARIO\Documents\VirtualDJ\Plugins64\` (ou `Plugins` para versão 32 bits).
+`%LOCALAPPDATA%\VirtualDJ\Plugins64\SoundEffect\FariaFX.dll` (ou na pasta Documents para versões antigas).
 
 Ao abrir o VirtualDJ, o plugin será carregado silenciosamente e iniciará a transmissão de dados no background via `127.0.0.1:9666`.
 

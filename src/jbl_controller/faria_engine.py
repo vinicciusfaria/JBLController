@@ -1,11 +1,11 @@
 import asyncio
 import logging
-from .visko_db import ViskoDB
+from .faria_db import FariaDB
 from .playback import PlaybackSource
 from .controller import ControllerState
 
-class ViskoEngine:
-    def __init__(self, db: ViskoDB, controller: ControllerState, playback: PlaybackSource):
+class FariaEngine:
+    def __init__(self, db: FariaDB, controller: ControllerState, playback: PlaybackSource):
         self.db = db
         self.controller = controller
         self.playback = playback
@@ -41,7 +41,10 @@ class ViskoEngine:
             try:
                 filename = self.playback.get_current_track()
                 position = self.playback.get_position_ms()
+                beat_pos = self.playback.get_position_beats()
                 is_playing = self.playback.is_playing()
+                bpm = getattr(self.playback, "bpm", 120.0)
+                if bpm <= 0: bpm = 120.0
                 
                 if filename != self.current_filename:
                     self.current_filename = filename
@@ -66,67 +69,84 @@ class ViskoEngine:
                             c = random.choice(vibrant_colors)
                             asyncio.create_task(self.controller.set_color(c[0], c[1], c[2]))
                             
-                            beam_effects = ["BOUNCE", "LOOP", "NEON", "TRIM", "SWITCH"]
-                            eff = random.choice(beam_effects)
-                            asyncio.create_task(self.controller.set_beam_effect(eff))
-                            
                     else:
                         self.current_track_id = -1
                         self.events = []
-                    self.last_position = position
+                    self.last_position = beat_pos
                     self.was_playing = is_playing
                     self.last_triggered_event_id = None
                     
                     if is_playing and self.follow_cues and self.events:
-                        self._sync_to_current_position(position)
+                        self._sync_to_current_position(beat_pos, bpm)
                     continue
                 
                 if not is_playing or not self.follow_cues or not self.events:
-                    self.last_position = position
+                    self.last_position = beat_pos
                     self.was_playing = is_playing
                     continue
                 
-                if not self.was_playing or abs(position - self.last_position) > 1000 or position < self.last_position:
-                    self._sync_to_current_position(position)
+                if not self.was_playing or abs(beat_pos - self.last_position) > 2.0 or beat_pos < self.last_position:
+                    self._sync_to_current_position(beat_pos, bpm)
                 else:
+                    beats_per_ms = bpm / 60000.0
+                    latency_beats = self.latency_compensation_ms * beats_per_ms
+                    
                     for ev in self.events:
                         if not ev["enabled"]:
                             continue
-                        trigger_time = ev["time_ms"] - self.latency_compensation_ms
-                        if self.last_position <= trigger_time <= position:
+                        
+                        # Usa beat_pos para o trigger (fallback para time_ms se beat_pos for 0)
+                        raw_beat = ev.get("beat_pos", 0.0)
+                        if raw_beat == 0.0 and ev.get("time_ms", 0) > 0:
+                            raw_beat = (ev["time_ms"] / 60000.0) * bpm
+                        trigger_beat = raw_beat - latency_beats
+                        
+                        if self.last_position <= trigger_beat <= beat_pos:
                             preset = ev["preset"]
                             self.last_triggered_event_id = ev["id"]
                             asyncio.create_task(self._trigger_preset(preset))
                             
-                self.last_position = position
+                self.last_position = beat_pos
                 self.was_playing = is_playing
 
             except Exception as e:
-                logging.error(f"VISKO Scheduler Error: {e}")
+                logging.error(f"FARIA Scheduler Error: {e}")
                 await asyncio.sleep(1.0) # Backoff on error
 
 
-    def _sync_to_current_position(self, current_pos):
+    def _sync_to_current_position(self, current_pos, bpm):
         if not self.events:
             return
             
-        # Encontra o ultimo evento antes da posicao atual
+        # O bpm vindo do playback ja incorpora o pitch
+        beats_per_ms = bpm / 60000.0
+        latency_beats = self.latency_compensation_ms * beats_per_ms
+        
         best_event = None
         for ev in self.events:
             if not ev["enabled"]:
                 continue
-            if ev["time_ms"] <= current_pos:
-                if best_event is None or ev["time_ms"] > best_event["time_ms"]:
+            ev_beat = ev.get("beat_pos", 0.0)
+            if ev_beat == 0.0 and ev.get("time_ms", 0) > 0:
+                ev_beat = (ev["time_ms"] / 60000.0) * bpm
+            if ev_beat <= (current_pos + latency_beats):
+                if best_event is None:
                     best_event = ev
+                else:
+                    best_beat = best_event.get("beat_pos", 0.0)
+                    if best_beat == 0.0 and best_event.get("time_ms", 0) > 0:
+                        best_beat = (best_event["time_ms"] / 60000.0) * bpm
+                    if ev_beat > best_beat:
+                        best_event = ev
                     
         if best_event:
             if best_event["id"] != self.last_triggered_event_id:
-                logging.debug(f"[VISKO FX] Sincronizando com tempo atual (Seek/Play): {best_event['preset']}")
+                logging.debug(f"[FARIA FX] Sincronizando com tempo atual (Seek/Play): {best_event['preset']}")
                 self.last_triggered_event_id = best_event["id"]
                 asyncio.create_task(self._trigger_preset(best_event["preset"]))
 
     async def _trigger_preset(self, preset: str):
-        logging.debug(f"[VISKO FX] Triggering '{preset}'!")
+        logging.debug(f"[FARIA FX] Triggering '{preset}'!")
         try:
             if preset.startswith("{"):
                 import json
@@ -161,7 +181,7 @@ class ViskoEngine:
             else:
                 await self.controller.apply_preset(preset)
         except Exception as e:
-            logging.error(f"VISKO Trigger Error for preset '{preset}': {e}")
+            logging.error(f"FARIA Trigger Error for preset '{preset}': {e}")
             
     def refresh_events(self):
         """Called by UI when an event is added/edited to reload current track's events."""

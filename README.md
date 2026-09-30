@@ -12,8 +12,8 @@ Diferente do aplicativo móvel da JBL (focado em uso doméstico casual), o **JBL
 * **Auto-Discovery & Auto-Healing (Stage-Proof):** Detecta e conecta automaticamente nas caixas próximas via BLE. Se uma caixa for desligada da tomada e ligada novamente, uma rotina de background restabelece a conexão sem travar o show.
 * **Hardware-Aware Fallback:** Ajuste automático de presets de acordo com as capacidades físicas de cada caixa (ex: Beams utilizam padrões adaptados como NEON/LOOP quando o Stick recebe modos lineares como STATIC).
 * **Painel Web DJ Desk (`localhost:8080`):** Interface web moderna e responsiva com WebSockets bidirecionais de latência zero, Color Wheel em canvas, faders de velocidade/brilho, monitor de bateria e controle individual ou global de efeitos.
-* **VISKO Light FX (Automação de Timecode):** Scheduler interno assíncrono (~50 Hz) integrado ao SQLite para disparo de Cues (cor, presets, efeitos) no milissegundo exato da música.
-* **Integração Real VirtualDJ (C++ DSP Plugin):** Plugin nativo de alta performance (`ViskoFX.dll`) que transmite telemetria em tempo real (tempo decorrido, BPM, pitch, status de play, volume, crossfader e equalização de graves) via UDP sem onerar a CPU do VirtualDJ.
+* **FARIA Light FX (Automação de Timecode):** Scheduler interno assíncrono (~50 Hz) integrado ao SQLite para disparo de Cues (cor, presets, efeitos) no milissegundo exato da música.
+* **Integração Real VirtualDJ (C++ DSP Plugin):** Plugin nativo de alta performance (`FariaFX.dll`) que transmite telemetria em tempo real (tempo decorrido, BPM, pitch, status de play, volume, crossfader e equalização de graves) via UDP sem onerar a CPU do VirtualDJ.
 * **Sincronia à Prova de Falhas (Backspin-Proof):** Detecção inteligente de pulos de agulha, scrubs, rewinds e backspins no VirtualDJ, rearmando instantaneamente o visual correto da iluminação.
 * **Desempate Inteligente de Master Deck:** Transição automática de palco orientada por fader e corte/troca de graves (`eq_low`), permitindo que a luz acompanhe a música dominante mesmo com o crossfader no centro.
 * **Modo Random de Troca de Faixa:** Sorteio automático de cores vivas e puras para faixas inéditas que ainda não possuem Cues cadastrados.
@@ -30,18 +30,18 @@ JBLController/
 │   ├── group.py & stage.py # Orquestração em massa de luzes e hardware fallbacks
 │   ├── controller.py       # Gerenciador de estado, fila de cores, macros (FUEGO, STROBO, BLACKOUT)
 │   ├── playback.py         # Receptor UDP de telemetria do VirtualDJ e gestão de Master Deck
-│   ├── visko_db.py         # Persistência SQLite de faixas, aliases e Cues de iluminação
-│   ├── visko_engine.py     # Motor de scheduler de timecode com compensação de latência
+│   ├── faria_db.py         # Persistência SQLite de faixas, aliases e Cues de iluminação
+│   ├── faria_engine.py     # Motor de scheduler de timecode com compensação de latência
 │   ├── web_app.py          # Servidor aiohttp + WebSockets
 │   └── static/             # Frontend completo (HTML5, Canvas, CSS moderno)
 ├── virtualdj_plugin/
 │   ├── src/
-│   │   ├── visko_vdj_plugin.cpp # Plugin DSP nativo C++ (Thread UDP a 30 FPS)
+│   │   ├── faria_vdj_plugin.cpp # Plugin DSP nativo C++ (Thread UDP a 30 FPS)
 │   │   ├── vdjPlugin8.h         # Headers do SDK do VirtualDJ 8
-│   │   └── ViskoFX.def          # Declaração de exportações DLL
+│   │   └── FariaFX.def          # Declaração de exportações DLL
 │   ├── CMakeLists.txt           # Build script para CMake
 │   ├── build.bat                # Script de compilação 1-clique com MSVC
-│   └── ViskoFX.dll              # Binário compilado pronto para uso (64-bit)
+│   └── FariaFX.dll              # Binário compilado pronto para uso (64-bit)
 ├── tests/                       # Suíte de testes unitários automatizados
 └── examples/
     └── run_web.py               # Ponto de entrada da aplicação
@@ -62,15 +62,15 @@ pip install bleak aiohttp
 ```
 
 ### 3. Instalação do Plugin do VirtualDJ
-O binário pronto `virtualdj_plugin/ViskoFX.dll` pode ser copiado diretamente para a pasta de plugins do VirtualDJ:
+O binário pronto `virtualdj_plugin/FariaFX.dll` pode ser copiado diretamente para a pasta de plugins do VirtualDJ:
 ```powershell
-copy virtualdj_plugin\ViskoFX.dll "%LOCALAPPDATA%\VirtualDJ\Plugins64\SoundEffect\ViskoFX.dll"
+copy virtualdj_plugin\FariaFX.dll "%LOCALAPPDATA%\VirtualDJ\Plugins64\SoundEffect\FariaFX.dll"
 ```
 *(Se preferir compilar do zero, basta rodar `virtualdj_plugin\build.bat` tendo o Visual Studio Build Tools instalado).*
 
 No VirtualDJ:
 1. Abra o VirtualDJ.
-2. Na aba de **Efeitos de Som (Sound Effect)** ou no slot Master, ative o efeito **ViskoFX**.
+2. Na aba de **Efeitos de Som (Sound Effect)** ou no slot Master, ative o efeito **FariaFX**.
 3. O plugin iniciará automaticamente a transmissão UDP em `127.0.0.1:9666`.
 
 ### 4. Iniciar a Mesa de Iluminação

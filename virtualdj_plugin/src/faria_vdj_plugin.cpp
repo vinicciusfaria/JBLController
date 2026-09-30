@@ -46,9 +46,11 @@ public:
 
 
 
-class ViskoLightFXPlugin : public IVdjPluginDsp8 {
+class FariaLightFXPlugin : public IVdjPluginDsp8 {
 
 private:
+
+    std::atomic<double> currentBeatPos;
 
     SOCKET udpSocket;
 
@@ -84,6 +86,16 @@ private:
 
 
 
+    std::string doubleToStr(double val) {
+        char buf[64];
+        snprintf(buf, sizeof(buf), "%f", val);
+        std::string s(buf);
+        for(char& c : s) if(c == ',') c = '.';
+        return s;
+    }
+
+
+
     void TimerLoop() {
 
         while (!stopThread.load()) {
@@ -98,18 +110,16 @@ private:
 
                 double timeMs = 0;
 
+                double beatPos = currentBeatPos.load();
+
 
 
                 cb->GetInfo("play", &isPlaying);
 
                 if (cb->GetInfo("get_bpm", &bpm) != S_OK || bpm <= 0) cb->GetInfo("bpm", &bpm);
 
-                
-
-                // Pega o tempo decorrido oficial e blindado (ignora a UI do usuario)
-
+                // Recupera o tempo exato em milissegundos
                 cb->GetInfo("get_time elapsed", &timeMs);
-
                 cb->GetInfo("get_time total", &lengthMs); 
 
 
@@ -172,19 +182,21 @@ private:
 
                 std::string payload = "{\"track\":\"" + safePath + "\",\"pos\":" + std::to_string((int)timeMs) + 
 
+                                      ",\"beat\":" + doubleToStr(beatPos) + 
+
                                       ",\"play\":" + (isPlaying > 0.5 ? "true" : "false") + 
 
-                                      ",\"bpm\":" + std::to_string(bpm) + 
+                                      ",\"bpm\":" + doubleToStr(bpm) + 
 
                                       ",\"length_ms\":" + std::to_string((int)lengthMs) + 
 
                                       ",\"deck\":" + std::to_string((int)pluginDeck) + 
 
-                                      ",\"pitch\":" + std::to_string(pitch) + 
+                                      ",\"pitch\":" + doubleToStr(pitch) + 
 
-                                      ",\"vol\":" + std::to_string(volume) + 
+                                      ",\"vol\":" + doubleToStr(volume) + 
 
-                                      ",\"cross_result\":" + std::to_string(crossfader) + ",\"eq_low_1\":" + std::to_string(eq_low_1) + ",\"eq_low_2\":" + std::to_string(eq_low_2) + "}";
+                                      ",\"cross_result\":" + doubleToStr(crossfader) + ",\"eq_low_1\":" + doubleToStr(eq_low_1) + ",\"eq_low_2\":" + doubleToStr(eq_low_2) + "}";
 
 
 
@@ -202,11 +214,13 @@ private:
 
 public:
 
-    ViskoLightFXPlugin() : udpSocket(INVALID_SOCKET), socketReady(false), stopThread(false) {}
+    FariaLightFXPlugin() : udpSocket(INVALID_SOCKET), socketReady(false), stopThread(false) {
+        currentBeatPos.store(0.0);
+    }
 
 
 
-    virtual ~ViskoLightFXPlugin() {
+    virtual ~FariaLightFXPlugin() {
 
         stopThread.store(true);
 
@@ -254,7 +268,7 @@ public:
 
         }
 
-        workerThread = std::thread(&ViskoLightFXPlugin::TimerLoop, this);
+        workerThread = std::thread(&FariaLightFXPlugin::TimerLoop, this);
 
         return S_OK;
 
@@ -264,11 +278,11 @@ public:
 
     HRESULT VDJ_API OnGetPluginInfo(TVdjPluginInfo8* infos) override {
 
-        infos->PluginName = "ViskoFX";
+        infos->PluginName = "FariaFX";
 
         infos->Author = "JBLController";
 
-        infos->Description = "Visko Light Sincronizador v5";
+        infos->Description = "Faria Light Sincronizador v5";
 
         infos->Version = "5.0";
 
@@ -284,7 +298,10 @@ public:
 
     HRESULT VDJ_API OnStop() override { return S_OK; }
 
-    HRESULT VDJ_API OnProcessSamples(float *buffer, int nb) override { return S_OK; }
+    HRESULT VDJ_API OnProcessSamples(float *buffer, int nb) override { 
+        currentBeatPos.store(this->SongPosBeats);
+        return S_OK; 
+    }
 
 
 
@@ -308,7 +325,7 @@ STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* ppObject) {
 
     {
 
-        *ppObject = new ViskoLightFXPlugin();
+        *ppObject = new FariaLightFXPlugin();
 
         return S_OK;
 

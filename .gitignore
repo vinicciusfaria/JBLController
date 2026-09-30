@@ -41,6 +41,7 @@ env/
 # Logs
 *.log
 time_debug*.log
+faria_debug*.log
 visko_debug*.log
 plugin_debug*.log
 

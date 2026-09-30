@@ -5,7 +5,7 @@ Data da última atualização: 2026-09-30
 ---
 
 ## 1. Visão Geral
-O **JBLController** evoluiu de uma investigação inicial de protocolo BLE para uma plataforma completa de iluminação de palco voltada para DJs. O ecossistema abrange desde decodificação TLV em baixo nível até um plugin nativo em C++ para VirtualDJ e uma suíte completa de automação de timecode em tempo real (VISKO Light FX) com interface web responsiva.
+O **JBLController** evoluiu de uma investigação inicial de protocolo BLE para uma plataforma completa de iluminação de palco voltada para DJs. O ecossistema abrange desde decodificação TLV em baixo nível até um plugin nativo em C++ para VirtualDJ e uma suíte completa de automação de timecode em tempo real (FARIA Light FX) com interface web responsiva.
 
 ---
 
@@ -23,14 +23,14 @@ O **JBLController** evoluiu de uma investigação inicial de protocolo BLE para 
 - `group.py` & `stage.py`: Orquestradores de dispositivos múltiplos com sistema de Fallback inteligente de hardware.
 - `controller.py`: Máquina de estado da Mesa de DJ. Gerencia Fila de Cores circular protegida contra sobrecarga de memória, seleção independente de animações para Stick e Beam, e macros de palco (`BLACKOUT`, `FUEGO`, `STROBO`, `COR SOLIDA`).
 - `playback.py`: Servidor UDP assíncrono para telemetria externa com gestão de Master Deck baseada em histerese de crossfader e desempate por equalização de graves (`eq_low`).
-- `visko_db.py`: Camada de persistência SQLite com suporte a faixas, aliases e Cues de iluminação com timestamps em milissegundos.
-- `visko_engine.py`: Motor de agendamento de timecode de alta frequência (~50 Hz) com compensação configurável de latência, suporte a retrospectiva de agulha (Seek), tolerância a backspins e modo de cor aleatória viva para novas faixas.
+- `faria_db.py`: Camada de persistência SQLite com suporte a faixas, aliases e Cues de iluminação com timestamps em milissegundos.
+- `faria_engine.py`: Motor de agendamento de timecode de alta frequência (~50 Hz) com compensação configurável de latência, suporte a retrospectiva de agulha (Seek), tolerância a backspins e modo de cor aleatória viva para novas faixas.
 - `web_app.py`: Servidor aiohttp com WebSocket full-duplex sincronizando instantaneamente estado de hardware, timecode do VDJ e listagem de eventos.
 
 ---
 
 ## 4. Plugin Nativo VirtualDJ (`virtualdj_plugin/`) (CONCLUÍDO)
-- **Tecnologia:** C++14 compilado como DLL Sound Effect de 64 bits (`ViskoFX.dll`) baseada no SDK oficial do VirtualDJ 8.
+- **Tecnologia:** C++14 compilado como DLL Sound Effect de 64 bits (`FariaFX.dll`) baseada no SDK oficial do VirtualDJ 8.
 - **Thread UDP Assíncrona:** Ciclo de transmissão a 30 FPS (`127.0.0.1:9666`) isolado do loop de áudio principal do VDJ para latência zero e ausência de travamentos.
 - **Telemetria de Alta Precisão:**
   - Extração de tempo absoluto decorrido via `"get_time elapsed"` e tempo total via `"get_time total"` (imune a preferências de layout do usuário no VDJ).

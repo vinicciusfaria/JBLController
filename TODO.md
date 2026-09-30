@@ -13,9 +13,9 @@
 - [x] Implementar máquina de estado com fila de cores circular e macros assíncronas (`controller.py`).
 - [x] Construir servidor WebSockets full-duplex de baixa latência (`web_app.py`).
 
-## VISKO Light FX & Automação de Timecode (CONCLUÍDO ✅)
-- [x] Persistência SQLite para faixas, aliases e Cues com timestamps em milissegundos (`visko_db.py`).
-- [x] Scheduler de alta precisão (~50 Hz) com compensação de latência (`visko_engine.py`).
+## FARIA Light FX & Automação de Timecode (CONCLUÍDO ✅)
+- [x] Persistência SQLite para faixas, aliases e Cues com timestamps em milissegundos (`faria_db.py`).
+- [x] Scheduler de alta precisão (~50 Hz) com compensação de latência (`faria_engine.py`).
 - [x] Retrospectiva inteligente de timecode (Seek / Play / Scrub).
 - [x] Suporte a Backspins e saltos rápidos na linha do tempo (Backspin-proof).
 - [x] Modo Random de cor viva na troca de faixas não mapeadas.

@@ -17,6 +17,11 @@ class PlaybackSource(ABC):
         pass
         
     @abstractmethod
+    def get_position_beats(self) -> float:
+        """Returns the current playback position in beats."""
+        pass
+        
+    @abstractmethod
     def is_playing(self) -> bool:
         """Returns True if music is actively playing."""
         pass
@@ -30,6 +35,7 @@ class VirtualDJSource(PlaybackSource):
     def __init__(self):
         self._filename = ""
         self._position = 0
+        self._beat_pos = 0.0
         self._playing = False
         self.bpm = 0
         self.pitch = 0.0
@@ -56,8 +62,10 @@ class VirtualDJSource(PlaybackSource):
             self.transport.close()
 
     # --- UDP Update (Called by Protocol) ---
-    def update_from_udp(self, track_path: str, pos_ms: int, playing: bool, bpm: float = 0, length_ms: int = 0, deck: int = 1, vol: float = 0, cross_result: float = 1.0, pitch: float = 0.0, eq_low_1: float = 0.5, eq_low_2: float = 0.5, hr1: int = 0, hr2: int = 0, filter_1: float = 0.5):
+    def update_from_udp(self, track_path: str, pos_ms: int, playing: bool, bpm: float = 0, length_ms: int = 0, deck: int = 1, vol: float = 0, cross_result: float = 1.0, pitch: float = 0.0, eq_low_1: float = 0.5, eq_low_2: float = 0.5, hr1: int = 0, hr2: int = 0, filter_1: float = 0.5, beat_pos: float = 0.0):
         basename = os.path.basename(track_path) if track_path else ""
+        if beat_pos == 0.0 and pos_ms > 0 and bpm > 0:
+            beat_pos = (pos_ms / 60000.0) * bpm
         needs_sync = False
         
         # O VirtualDJ agora manda o "crossfader_result" que já faz toda a conta!
@@ -122,6 +130,7 @@ class VirtualDJSource(PlaybackSource):
                 
             self._filename = basename
             self._position = pos_ms
+            self._beat_pos = beat_pos
             self._playing = True
             self.bpm = bpm
             self.pitch = pitch
@@ -135,6 +144,7 @@ class VirtualDJSource(PlaybackSource):
                 
             self._filename = basename
             self._position = pos_ms
+            self._beat_pos = beat_pos
             self._playing = False
             self.bpm = bpm
             self.pitch = pitch
@@ -172,6 +182,8 @@ class VirtualDJSource(PlaybackSource):
     @position.setter
     def position(self, val):
         self._position = val
+        bpm = self.bpm if self.bpm > 0 else 120.0
+        self._beat_pos = (val / 60000.0) * bpm
         if self._playing:
             self._last_play_time = time.time()
             
@@ -197,6 +209,15 @@ class VirtualDJSource(PlaybackSource):
         
     def get_position_ms(self) -> int:
         return self.position
+        
+    def get_position_beats(self) -> float:
+        # Mock behavior for beats (interpolate based on BPM and pitch)
+        is_vdj_live = (time.time() - self._last_udp_update) < 1.5
+        if self._playing and not is_vdj_live:
+            bpm = self.bpm if self.bpm > 0 else 120.0
+            beats_per_ms = bpm / 60000.0
+            return self._beat_pos + ((time.time() - self._last_play_time) * 1000 * beats_per_ms)
+        return self._beat_pos
         
     def is_playing(self) -> bool:
         return self.playing
@@ -224,7 +245,8 @@ class VDJUDPProtocol(asyncio.DatagramProtocol):
                 payload.get("eq_low_2", 0.5),
                 payload.get("hr1", 0),
                 payload.get("hr2", 0),
-                payload.get("filter_1", 0.5)
+                payload.get("filter_1", 0.5),
+                payload.get("beat", 0.0)
             )
         except Exception as e:
             logging.error(f"Erro UDP VDJ: {e} - Dados recebidos: {data}")

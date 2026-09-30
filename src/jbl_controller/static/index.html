@@ -264,20 +264,20 @@
 </div>
 
 <div class="panel" style="border: 2px solid #9c27b0;">
-    <div class="label" style="color: #e1bee7;">VISKO LIGHT FX (Timecode Automation)</div>
+    <div class="label" style="color: #e1bee7;">FARIA LIGHT FX (Timecode Automation)</div>
     
     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
         <div style="display: flex; flex-direction: column; gap: 5px;">
             <label style="font-weight: bold; color: #fff;">
-                <input type="checkbox" id="viskoFollow" checked onchange="sendAction('visko_set_follow', {value: this.checked})"> SEGUIR CUES
+                <input type="checkbox" id="fariaFollow" checked onchange="sendAction('faria_set_follow', {value: this.checked})"> SEGUIR CUES
             </label>
             <label style="font-weight: bold; color: #fff; font-size: 12px;">
-                <input type="checkbox" id="viskoRandom" onchange="sendAction('visko_set_random', {value: this.checked})"> COR RANDOM (NOVA TRACK)
+                <input type="checkbox" id="fariaRandom" onchange="sendAction('faria_set_random', {value: this.checked})"> COR RANDOM (NOVA TRACK)
             </label>
         </div>
         <div>
             <label style="font-size: 10px; color: #aaa;">Latência (ms):</label>
-            <input type="number" id="viskoLatency" style="width: 50px; background: #222; color: #fff; border: 1px solid #555; border-radius: 4px;" onchange="sendAction('visko_set_latency', {value: parseInt(this.value)})">
+            <input type="number" id="fariaLatency" style="width: 50px; background: #222; color: #fff; border: 1px solid #555; border-radius: 4px;" onchange="sendAction('faria_set_latency', {value: parseInt(this.value)})">
         </div>
     </div>
     
@@ -286,15 +286,28 @@
         <div style="display: flex; gap: 5px; margin-bottom: 5px;">
             <input type="text" id="mockTrack" readonly placeholder="Aguardando VirtualDJ..." style="flex: 1; background: #222; color: #00e676; border: 1px solid #555; padding: 5px; border-radius: 4px; font-weight: bold; font-family: monospace;">
         </div>
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <button id="mockPlayBtn" onclick="sendAction('mock_play_pause')" style="flex: 0 0 auto; padding: 5px 15px; background: #4caf50;">PLAY</button>
-            <div style="font-family: monospace; font-size: 18px; font-weight: bold; color: #00e676;" id="mockPosition"><span id="mockPosition">00:00.000</span> / <span id="mockLength">00:00.000</span> <span style="margin-left: 10px; color: #ff9800;">BPM: <span id="mockBpm">0.0</span></span></div>
-            <input type="range" id="mockSeek" min="0" max="300000" value="0" style="flex: 1; pointer-events: none;" disabled>
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 5px;">
+            <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
+                <button id="mockPlayBtn" onclick="sendAction('mock_play_pause')" style="flex: 0 0 auto; padding: 5px 15px; background: #4caf50;">PLAY</button>
+                <div style="font-family: monospace; font-size: 18px; font-weight: bold; color: #00e676;" id="mockPosition">00:00.000</div>
+            </div>
+            
+            <div style="background: #111; padding: 5px 15px; border-radius: 4px; border: 1px solid #444; display: flex; gap: 15px; align-items: center;">
+                <div style="text-align: center;">
+                    <div style="font-size: 10px; color: #888; margin-bottom: 2px;">BPM</div>
+                    <div style="font-family: monospace; font-size: 16px; font-weight: bold; color: #ff9800;" id="liveBpm">0.0</div>
+                </div>
+                <div style="text-align: center; border-left: 1px solid #333; padding-left: 15px;">
+                    <div style="font-size: 10px; color: #888; margin-bottom: 2px;">BARS</div>
+                    <div style="font-family: monospace; font-size: 16px; font-weight: bold; color: #2196F3;" id="liveBeat">1.1</div>
+                </div>
+            </div>
         </div>
+        <input type="range" id="mockSeek" min="0" max="300000" value="0" style="width: 100%; pointer-events: none;" disabled>
     </div>
     
     <div class="label">CUES DA MÚSICA ATUAL</div>
-    <div id="viskoEventsList" style="background: #222; min-height: 50px; border-radius: 4px; padding: 5px; margin-bottom: 10px; max-height: 150px; overflow-y: auto;">
+    <div id="fariaEventsList" style="background: #222; min-height: 50px; border-radius: 4px; padding: 5px; margin-bottom: 10px; max-height: 150px; overflow-y: auto;">
         <!-- Events injected here -->
       </div>
 
@@ -339,7 +352,7 @@
             <option value="STROBO">STROBO</option>
             <option value="BLACKOUT">BLACKOUT</option>
         </select>
-        <button onclick="addViskoCue()" style="flex: 0 0 auto; background: #9c27b0; padding: 5px 10px;">+ ADICIONAR</button>
+        <button onclick="addFariaCue()" style="flex: 0 0 auto; background: #9c27b0; padding: 5px 10px;">+ ADICIONAR</button>
     </div>
 </div>
 
@@ -409,77 +422,133 @@
             qContainer.appendChild(div);
         });
         
-        // Update VISKO State
-        if (currentState.visko) {
-            document.getElementById('viskoFollow').checked = currentState.visko.follow_cues;
-            document.getElementById('viskoRandom').checked = currentState.visko.random_on;
-            document.getElementById('viskoLatency').value = currentState.visko.latency_ms;
+        // Update FARIA State
+        const fState = currentState.faria || currentState.visko;
+        if (fState) {
+            if (document.getElementById('fariaFollow')) document.getElementById('fariaFollow').checked = fState.follow_cues;
+            if (document.getElementById('fariaRandom')) document.getElementById('fariaRandom').checked = fState.random_on;
+            if (document.getElementById('fariaLatency')) document.getElementById('fariaLatency').value = fState.latency_ms;
             
-            document.getElementById('mockTrack').value = currentState.visko.track;
-            document.getElementById('mockPlayBtn').innerText = currentState.visko.is_playing ? "PAUSE" : "PLAY";
-            document.getElementById('mockPlayBtn').style.backgroundColor = currentState.visko.is_playing ? "#f44336" : "#4caf50";
+            document.getElementById('mockTrack').value = fState.track;
+            document.getElementById('mockPlayBtn').innerText = fState.is_playing ? "PAUSE" : "PLAY";
+            document.getElementById('mockPlayBtn').style.backgroundColor = fState.is_playing ? "#f44336" : "#4caf50";
             
             if (!isMockSeeking) {
-                document.getElementById('mockSeek').value = currentState.visko.position;
-                document.getElementById('mockSeek').max = currentState.visko.length_ms || 300000;
-                document.getElementById('mockPosition').innerText = formatMsToTimecode(currentState.visko.position);
-                if (document.getElementById('mockLength')) document.getElementById('mockLength').innerText = formatMsToTimecode(currentState.visko.length_ms || 0);
+                document.getElementById('mockSeek').value = fState.position;
+                document.getElementById('mockSeek').max = fState.length_ms || 300000;
+                document.getElementById('mockPosition').innerText = formatMsToTimecode(fState.position);
+                if (document.getElementById('mockLength')) document.getElementById('mockLength').innerText = formatMsToTimecode(fState.length_ms || 0);
                 
-                let pitchMult = 1.0 + (currentState.visko.pitch ? (currentState.visko.pitch / 100.0) : 0);
-                let currentBpm = (currentState.visko.bpm || 0) * pitchMult;
-                if (document.getElementById('mockBpm')) document.getElementById('mockBpm').innerText = Math.round(currentBpm);
+                let currentBpm = fState.bpm || 0.0;
+                if (document.getElementById('liveBpm')) document.getElementById('liveBpm').innerText = currentBpm.toFixed(2);
+                if (document.getElementById('liveBeat')) document.getElementById('liveBeat').innerText = formatBeatToBars(fState.beat_pos);
             }
             
             // Sync local state for loop
-            localViskoPlaying = currentState.visko.is_playing;
-            localViskoPos = currentState.visko.position;
-            lastViskoUpdate = performance.now();
+            localFariaPlaying = fState.is_playing;
+            localFariaPos = fState.position;
+            localFariaBeat = fState.beat_pos || 0.0;
+            lastFariaUpdate = performance.now();
             
             // Render events
-            const evList = document.getElementById('viskoEventsList');
-            evList.innerHTML = '';
-            if (currentState.visko.events.length === 0) {
-                evList.innerHTML = '<div style="color:#666; font-size:12px; text-align:center;">Nenhum evento.</div>';
-            } else {
-                currentState.visko.events.forEach(ev => {
-                    let d = document.createElement('div');
-                    d.style.display = 'flex';
-                    d.style.justifyContent = 'space-between';
-                    d.style.alignItems = 'center';
-                    d.style.fontSize = '12px';
-                    d.style.padding = '2px 0';
-                    d.style.borderBottom = '1px solid #444';
-                    
-                    
-                    let toggleColor = ev.enabled ? '#00e676' : '#666';
-                    let presetText = ev.preset;
-                    if (presetText.startsWith('{')) {
-                        try {
-                            let p = JSON.parse(presetText);
-                            let rgb = p.color;
-                            presetText = `<span style="display:inline-block; width:10px; height:10px; background:rgb(${rgb[0]},${rgb[1]},${rgb[2]}); border-radius:50%; margin-right:5px; vertical-align:middle;"></span> S:${EFFECT_NAMES_PT[p.stick] || p.stick} / B:${EFFECT_NAMES_PT[p.beam] || p.beam}`;
-                        } catch(e) {}
-                    }
-                    // Handle JSON escaping for the update button
-                    let safePreset = ev.preset.replace(/'/g, "\\'");
-                    d.innerHTML = `
-                        <span style="font-family: monospace; color: #fff; width: 70px;">${formatMsToTimecode(ev.time_ms)}</span>
-                        <span style="flex:1; color: #ff9800; font-weight: bold;">${presetText}</span>
-                        <button onclick="sendAction('visko_update_event', {id: ${ev.id}, time_ms: ${ev.time_ms}, preset: '${safePreset}', enabled: ${!ev.enabled}})" style="padding:2px 5px; background:transparent; color:${toggleColor}; flex:0 0 auto;">${ev.enabled ? 'ON' : 'OFF'}</button>
+            const evList = document.getElementById('fariaEventsList');
+            if (evList) {
+                evList.innerHTML = '';
+                if (!fState.events || fState.events.length === 0) {
+                    evList.innerHTML = '<div style="color:#666; font-size:12px; text-align:center;">Nenhum evento.</div>';
+                } else {
+                    fState.events.forEach(ev => {
+                        let d = document.createElement('div');
+                        d.style.display = 'flex';
+                        d.style.justifyContent = 'space-between';
+                        d.style.alignItems = 'center';
+                        d.style.fontSize = '12px';
+                        d.style.padding = '2px 0';
+                        d.style.borderBottom = '1px solid #444';
+                        
+                        
+                        let toggleColor = ev.enabled ? '#00e676' : '#666';
+                        let presetText = ev.preset;
+                        if (presetText.startsWith('{')) {
+                            try {
+                                let p = JSON.parse(presetText);
+                                let rgb = p.color;
+                                presetText = `<span style="display:inline-block; width:10px; height:10px; background:rgb(${rgb[0]},${rgb[1]},${rgb[2]}); border-radius:50%; margin-right:5px; vertical-align:middle;"></span> S:${EFFECT_NAMES_PT[p.stick] || p.stick} / B:${EFFECT_NAMES_PT[p.beam] || p.beam}`;
+                            } catch(e) {}
+                        }
+                        // Handle JSON escaping for the update button
+                        let safePreset = ev.preset.replace(/'/g, "\\'");
+                        d.innerHTML = `
+                            <span style="font-family: monospace; color: #fff; width: 70px;">${formatBeatToBars(ev.beat_pos)}</span>
+                            <span style="flex:1; color: #ff9800; font-weight: bold;">${presetText}</span>
+                            <button onclick="editEvent(${ev.id}, ${ev.time_ms}, ${ev.beat_pos}, '${safePreset}')" style="padding:2px 5px; background:transparent; color:#2196F3; flex:0 0 auto;" title="Editar">✏️</button>
+                            <button onclick="copyEvent(${ev.id}, ${ev.time_ms}, ${ev.beat_pos}, '${safePreset}')" style="padding:2px 5px; background:transparent; color:#FFC107; flex:0 0 auto;" title="Copiar">📋</button>
+                            <button onclick="sendAction('faria_update_event', {id: ${ev.id}, time_ms: ${ev.time_ms}, beat_pos: ${ev.beat_pos}, preset: '${safePreset}', enabled: ${!ev.enabled}})" style="padding:2px 5px; background:transparent; color:${toggleColor}; flex:0 0 auto;">${ev.enabled ? 'ON' : 'OFF'}</button>
 
-                        <button onclick="sendAction('visko_delete_event', {id: ${ev.id}})" style="padding:2px 5px; background:transparent; color:#f44336; flex:0 0 auto;">X</button>
-                    `;
-                    evList.appendChild(d);
-                });
+                            <button onclick="sendAction('faria_delete_event', {id: ${ev.id}})" style="padding:2px 5px; background:transparent; color:#f44336; flex:0 0 auto;" title="Excluir">X</button>
+                        `;
+                        evList.appendChild(d);
+                    });
+                }
             }
         }
     }
-    
-    // VISKO TIME LOGIC
+    function formatBeatToBars(beat) {
+        if (beat === undefined || beat === null) return "0.0";
+        let isNeg = beat < 0;
+        let absBeat = Math.abs(beat);
+        let bars = Math.floor(absBeat / 4) + 1;
+        let beats = Math.floor(absBeat % 4) + 1;
+        return (isNeg ? "-" : "") + bars + "." + beats;
+    }
+
+    function parseBarsToBeat(str) {
+        if (!str) return 0;
+        str = str.trim();
+        if (!isNaN(str) && str.indexOf('.') === -1) return parseFloat(str);
+        
+        let isNeg = str.startsWith("-");
+        if (isNeg) str = str.substring(1);
+        
+        let parts = str.split('.');
+        if (parts.length >= 2) {
+            let bar = parseInt(parts[0]) || 1;
+            let b = parseInt(parts[1]) || 1;
+            let fraction = parts.length > 2 ? parseFloat("0." + parts[2]) : 0;
+            let result = ((bar - 1) * 4) + (b - 1) + fraction;
+            return isNeg ? -result : result;
+        }
+        let parsed = parseFloat(str);
+        return isNeg ? -parsed : parsed;
+    }
+
+    function editEvent(id, oldTime, oldBeat, oldPreset) {
+        let newBeatStr = prompt("Editar tempo em BARS (ex: 17.1):", formatBeatToBars(oldBeat));
+        if (!newBeatStr) return;
+        let newBeat = parseBarsToBeat(newBeatStr);
+        if (isNaN(newBeat)) newBeat = oldBeat;
+        
+        let newPreset = prompt("Editar preset:", oldPreset);
+        if (!newPreset) return;
+        
+        sendAction('edit_event', {id: id, time_ms: oldTime, beat_pos: newBeat, preset: newPreset});
+    }
+
+    function copyEvent(id, oldTime, oldBeat, oldPreset) {
+        let newBeatStr = prompt("Copiar para qual BAR (ex: 17.1)?", formatBeatToBars(oldBeat + 4)); // + 1 bar
+        if (!newBeatStr) return;
+        let newBeat = parseBarsToBeat(newBeatStr);
+        if (isNaN(newBeat)) return;
+        
+        sendAction('add_event', {time_ms: oldTime, beat_pos: newBeat, preset: oldPreset});
+    }
+
+    // FARIA TIME LOGIC
     let isMockSeeking = false;
-    let localViskoPlaying = false;
-    let localViskoPos = 0;
-    let lastViskoUpdate = 0;
+    let localFariaPlaying = false;
+    let localFariaPos = 0;
+    let localFariaBeat = 0;
+    let lastFariaUpdate = 0;
     
     document.getElementById('mockSeek').addEventListener('mousedown', () => isMockSeeking = true);
     document.getElementById('mockSeek').addEventListener('mouseup', () => isMockSeeking = false);
@@ -489,13 +558,24 @@
     
     // Animation frame to keep timer ticking smoothly in UI
     function animationLoop() {
-        if (localViskoPlaying && !isMockSeeking) {
+        if (localFariaPlaying && !isMockSeeking) {
             let now = performance.now();
-            let elapsed = now - lastViskoUpdate;
-            let pitchMult = 1.0 + (currentState.visko && currentState.visko.pitch ? (currentState.visko.pitch / 100.0) : 0);
-            let current = localViskoPos + (elapsed * pitchMult);
+            let elapsed = now - lastFariaUpdate;
+            let fState = currentState.faria || currentState.visko;
+            let pitchMult = 1.0 + (fState && fState.pitch ? (fState.pitch / 100.0) : 0);
+            let current = localFariaPos + (elapsed * pitchMult);
+            
             document.getElementById('mockSeek').value = current;
             document.getElementById('mockPosition').innerText = formatMsToTimecode(current);
+            
+            if (fState) {
+                // BPM already includes pitch from VDJ!
+                let bpm = fState.bpm || 120.0;
+                let beatsPerMs = bpm / 60000.0;
+                let currentBeat = localFariaBeat + (elapsed * beatsPerMs);
+                let beatEl = document.getElementById('liveBeat');
+                if (beatEl) beatEl.innerText = formatBeatToBars(currentBeat);
+            }
         }
         requestAnimationFrame(animationLoop);
     }
@@ -522,12 +602,12 @@
         return (m * 60 * 1000) + (s * 1000) + ms;
     }
     
-    function addViskoCue() {
+    function addFariaCue() {
         let tcStr = document.getElementById('newCueTime').value;
         let preset = document.getElementById('newCuePreset').value;
         let ms = parseTimecodeToMs(tcStr);
         if (ms > 0 || tcStr === "00:00.000" || tcStr === "00:00") {
-            sendAction('visko_add_event', {time_ms: ms, preset: preset});
+            sendAction('faria_add_event', {time_ms: ms, preset: preset});
             document.getElementById('newCueTime').value = '';
         } else {
             alert('Formato inválido. Use MM:SS ou MM:SS.mmm');

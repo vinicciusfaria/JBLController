@@ -81,7 +81,7 @@ class Stage(PartyLightGroup):
 
     async def calm(self):
         """
-        Sophisticated/conceptual atmosphere, slow movement. (VISKO CALMDWN universe)
+        Sophisticated/conceptual atmosphere, slow movement. (FARIA CALMDWN universe)
         """
         color = (50, 0, 100) # Deep Purple
         brightness = 40
@@ -91,7 +91,7 @@ class Stage(PartyLightGroup):
 
     async def rave(self):
         """
-        Energetic visual, fast effects. (VISKO NEWVERSE universe)
+        Energetic visual, fast effects. (FARIA NEWVERSE universe)
         """
         color = (255, 0, 255) # Magenta
         brightness = 100

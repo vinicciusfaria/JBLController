@@ -2,9 +2,9 @@ import asyncio
 import os
 import tempfile
 import unittest
-from jbl_controller.visko_db import ViskoDB
+from jbl_controller.faria_db import FariaDB
 from jbl_controller.playback import VirtualDJSource
-from jbl_controller.visko_engine import ViskoEngine
+from jbl_controller.faria_engine import FariaEngine
 from jbl_controller.controller import ControllerState
 from jbl_controller.stage import Stage
 
@@ -20,15 +20,15 @@ class DummyController(ControllerState):
         self.triggered.append(preset)
 
 
-class TestViskoEngine(unittest.IsolatedAsyncioTestCase):
+class TestFariaEngine(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
-        self.db_path = os.path.join(self.temp_dir.name, "test_visko.db")
+        self.db_path = os.path.join(self.temp_dir.name, "test_faria.db")
             
-        self.db = ViskoDB(self.db_path)
+        self.db = FariaDB(self.db_path)
         self.controller = DummyController()
         self.playback = VirtualDJSource()
-        self.engine = ViskoEngine(self.db, self.controller, self.playback)
+        self.engine = FariaEngine(self.db, self.controller, self.playback)
         
         self.playback.filename = "Track1.mp3"
         self.playback.position = 0

@@ -4,18 +4,20 @@ import json
 import asyncio
 import logging
 from .controller import ControllerState
-from .visko_db import ViskoDB
+from .faria_db import FariaDB
 from .playback import VirtualDJSource
-from .visko_engine import ViskoEngine
+from .faria_engine import FariaEngine
 
 class WebApp:
     def __init__(self, controller: ControllerState):
         self.controller = controller
         
-        # VISKO Initialization
-        self.visko_db = ViskoDB()
+        # FARIA Initialization
+        self.faria_db = FariaDB()
+        self.visko_db = self.faria_db  # Compatibility alias
         self.playback = VirtualDJSource()
-        self.visko = ViskoEngine(self.visko_db, self.controller, self.playback)
+        self.faria = FariaEngine(self.faria_db, self.controller, self.playback)
+        self.visko = self.faria  # Compatibility alias
         self.playback.on_sync_callback = self.broadcast_state
         
         self.app = web.Application()
@@ -26,7 +28,7 @@ class WebApp:
         self.app.on_startup.append(self.start_background_tasks)
         
     async def start_background_tasks(self, app):
-        self.visko.start()
+        self.faria.start()
         asyncio.create_task(self.playback.start_udp_server())
         
         static_dir = os.path.join(os.path.dirname(__file__), 'static')
@@ -42,18 +44,21 @@ class WebApp:
 
     def get_full_state(self):
         state = self.controller.get_state_dict()
-        state["visko"] = {
-            "follow_cues": self.visko.follow_cues,
-            "random_on": getattr(self.visko, "random_color_on_track_change", False),
-            "latency_ms": self.visko.latency_compensation_ms,
+        faria_state = {
+            "follow_cues": self.faria.follow_cues,
+            "random_on": getattr(self.faria, "random_color_on_track_change", False),
+            "latency_ms": self.faria.latency_compensation_ms,
             "track": self.playback.get_current_track(),
             "position": self.playback.get_position_ms(),
+            "beat_pos": self.playback.get_position_beats(),
             "is_playing": self.playback.is_playing(),
             "bpm": getattr(self.playback, "bpm", 0),
             "pitch": getattr(self.playback, "pitch", 0.0),
             "length_ms": getattr(self.playback, "length_ms", 0),
-            "events": self.visko.events
+            "events": self.faria.events
         }
+        state["faria"] = faria_state
+        state["visko"] = faria_state  # Compatibility
         return state
 
     async def broadcast_state(self):
@@ -115,17 +120,31 @@ class WebApp:
                         elif cmd == "add_event":
                             track = self.playback.get_current_track()
                             if track:
-                                pos = self.playback.get_position_ms()
+                                pos = data.get("time_ms")
+                                beat = data.get("beat_pos")
+                                if pos is None:
+                                    pos = self.playback.get_position_ms()
+                                if beat is None:
+                                    beat = self.playback.get_position_beats()
                                 preset = data.get("preset", "strobe")
-                                track_id = self.visko_db.get_or_create_track(track)
-                                self.visko_db.add_event(track_id, pos, preset)
-                                self.visko.refresh_events()
+                                track_id = self.faria_db.get_or_create_track(track)
+                                self.faria_db.add_event(track_id, int(pos), float(beat), preset)
+                                self.faria.refresh_events()
+                                await self.broadcast_state()
+                        elif cmd == "edit_event":
+                            event_id = data.get("id")
+                            time_ms = data.get("time_ms")
+                            beat_pos = data.get("beat_pos")
+                            preset = data.get("preset")
+                            if event_id is not None and time_ms is not None and beat_pos is not None and preset is not None:
+                                self.faria_db.update_event(int(event_id), int(time_ms), float(beat_pos), preset)
+                                self.faria.refresh_events()
                                 await self.broadcast_state()
                         elif cmd == "remove_event":
                             event_id = data.get("event_id")
                             if event_id is not None:
-                                self.visko_db.delete_event(int(event_id))
-                                self.visko.refresh_events()
+                                self.faria_db.delete_event(int(event_id))
+                                self.faria.refresh_events()
                                 await self.broadcast_state()
                         elif cmd == "blackout":
                             await self.controller.toggle_blackout()
@@ -140,25 +159,25 @@ class WebApp:
                         elif cmd == "rescan_devices":
                             asyncio.create_task(self.controller.rescan_devices())
                             
-                        # VISKO Commands
-                        elif cmd == "visko_set_follow":
-                            self.visko.follow_cues = bool(data.get("value"))
-                        elif cmd == "visko_set_random":
-                            self.visko.random_color_on_track_change = bool(data.get("value"))
-                        elif cmd == "visko_set_latency":
-                            self.visko.latency_compensation_ms = int(data.get("value", 0))
-                        elif cmd == "visko_add_event":
-                            self.visko.db.add_event(self.visko.current_track_id, int(data["time_ms"]), str(data["preset"]))
-                            self.visko.refresh_events()
-                        elif cmd == "visko_update_event":
-                            self.visko.db.update_event(int(data["id"]), int(data["time_ms"]), str(data["preset"]), bool(data["enabled"]))
-                            self.visko.refresh_events()
-                        elif cmd == "visko_delete_event":
-                            self.visko.db.delete_event(int(data["id"]))
-                            self.visko.refresh_events()
-                        elif cmd == "visko_rename_track":
-                            self.visko.db.rename_track(self.visko.current_track_id, str(data["new_name"]))
-                            self.visko.current_filename = str(data["new_name"])
+                        # FARIA Commands
+                        elif cmd in ("faria_set_follow", "visko_set_follow"):
+                            self.faria.follow_cues = bool(data.get("value"))
+                        elif cmd in ("faria_set_random", "visko_set_random"):
+                            self.faria.random_color_on_track_change = bool(data.get("value"))
+                        elif cmd in ("faria_set_latency", "visko_set_latency"):
+                            self.faria.latency_compensation_ms = int(data.get("value", 0))
+                        elif cmd in ("faria_add_event", "visko_add_event"):
+                            self.faria.db.add_event(self.faria.current_track_id, int(data["time_ms"]), float(data.get("beat_pos", 0.0)), str(data["preset"]))
+                            self.faria.refresh_events()
+                        elif cmd in ("faria_update_event", "visko_update_event"):
+                            self.faria.db.update_event(int(data["id"]), int(data["time_ms"]), float(data.get("beat_pos", 0.0)), str(data["preset"]), bool(data["enabled"]))
+                            self.faria.refresh_events()
+                        elif cmd in ("faria_delete_event", "visko_delete_event"):
+                            self.faria.db.delete_event(int(data["id"]))
+                            self.faria.refresh_events()
+                        elif cmd in ("faria_rename_track", "visko_rename_track"):
+                            self.faria.db.rename_track(self.faria.current_track_id, str(data["new_name"]))
+                            self.faria.current_filename = str(data["new_name"])
                             
                         # Mock Playback Commands (for UI testing)
                         elif cmd == "mock_set_track":

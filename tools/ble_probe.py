@@ -17,7 +17,7 @@ CHANGE_WAIT = 1.5
 
 
 async def main():
-    print("Procurando dispositivos do Viskostage...\n")
+    print("Procurando dispositivos do Fariastage...\n")
 
     devices = await BleakScanner.discover()
 
@@ -61,7 +61,7 @@ async def main():
         with output.open("a", encoding="utf-8") as file:
             file.write(text + "\n")
 
-    log("=== VISKOSTAGE BLE CAPTURE ===")
+    log("=== FARIASTAGE BLE CAPTURE ===")
     log(f"INÍCIO: {datetime.now()}")
     log("")
 

@@ -2,8 +2,8 @@ import sqlite3
 import os
 import logging
 
-class ViskoDB:
-    def __init__(self, db_path="visko_fx.db"):
+class FariaDB:
+    def __init__(self, db_path="faria_fx.db"):
         self.db_path = db_path
         self._init_db()
         
@@ -38,9 +38,16 @@ class ViskoDB:
                         FOREIGN KEY(track_id) REFERENCES tracks(id)
                     )
                 ''')
+                
+                # Migração: adicionar coluna beat_pos
+                cursor.execute("PRAGMA table_info(events)")
+                columns = [c[1] for c in cursor.fetchall()]
+                if "beat_pos" not in columns:
+                    cursor.execute("ALTER TABLE events ADD COLUMN beat_pos REAL DEFAULT 0.0")
+                    
                 conn.commit()
         except Exception as e:
-            logging.error(f"VISKO DB Init Error: {e}")
+            logging.error(f"FARIA DB Init Error: {e}")
 
     def get_or_create_track(self, filename: str) -> int:
         """Finds track by filename or alias, or creates a new one."""
@@ -68,7 +75,7 @@ class ViskoDB:
                 conn.commit()
                 return track_id
         except Exception as e:
-            logging.error(f"VISKO DB Error (get_or_create_track): {e}")
+            logging.error(f"FARIA DB Error (get_or_create_track): {e}")
             return -1
 
     def rename_track(self, track_id: int, new_filename: str):
@@ -87,39 +94,60 @@ class ViskoDB:
                 cursor.execute('UPDATE tracks SET current_filename = ? WHERE id = ?', (new_filename, track_id))
                 conn.commit()
         except Exception as e:
-            logging.error(f"VISKO DB Error (rename_track): {e}")
+            logging.error(f"FARIA DB Error (rename_track): {e}")
 
     def get_events(self, track_id: int):
         try:
             with self._get_conn() as conn:
                 cursor = conn.cursor()
-                cursor.execute('SELECT id, time_ms, preset, enabled FROM events WHERE track_id = ? ORDER BY time_ms ASC', (track_id,))
-                return [{"id": r[0], "time_ms": r[1], "preset": r[2], "enabled": bool(r[3])} for r in cursor.fetchall()]
+                cursor.execute('SELECT id, time_ms, beat_pos, preset, enabled FROM events WHERE track_id = ? ORDER BY time_ms ASC', (track_id,))
+                events = []
+                for row in cursor.fetchall():
+                    events.append({
+                        "id": row[0],
+                        "time_ms": row[1],
+                        "beat_pos": row[2] if row[2] is not None else 0.0,
+                        "preset": row[3],
+                        "enabled": bool(row[4])
+                    })
+                return events
         except Exception as e:
-            logging.error(f"VISKO DB Error (get_events): {e}")
+            logging.error(f"FARIA DB Error (get_events): {e}")
             return []
 
-    def add_event(self, track_id: int, time_ms: int, preset: str, enabled: bool = True) -> int:
+    def add_event(self, track_id: int, time_ms: int, beat_pos: float = 0.0, preset: str = "", enabled: bool = True) -> int:
+        if isinstance(beat_pos, str):
+            preset = beat_pos
+            beat_pos = 0.0
         try:
             with self._get_conn() as conn:
                 cursor = conn.cursor()
-                cursor.execute('INSERT INTO events (track_id, time_ms, preset, enabled) VALUES (?, ?, ?, ?)', 
-                               (track_id, time_ms, preset, int(enabled)))
+                cursor.execute('INSERT INTO events (track_id, time_ms, beat_pos, preset, enabled) VALUES (?, ?, ?, ?, ?)', 
+                               (track_id, time_ms, beat_pos, preset, int(enabled)))
                 conn.commit()
                 return cursor.lastrowid
         except Exception as e:
-            logging.error(f"VISKO DB Error (add_event): {e}")
+            logging.error(f"FARIA DB Error (add_event): {e}")
             return -1
 
-    def update_event(self, event_id: int, time_ms: int, preset: str, enabled: bool):
+    def update_event(self, event_id: int, time_ms: int, beat_pos: float = 0.0, preset: str = "", enabled: bool = None):
+        if isinstance(beat_pos, str):
+            if isinstance(preset, bool):
+                enabled = preset
+            preset = beat_pos
+            beat_pos = 0.0
         try:
             with self._get_conn() as conn:
                 cursor = conn.cursor()
-                cursor.execute('UPDATE events SET time_ms = ?, preset = ?, enabled = ? WHERE id = ?',
-                               (time_ms, preset, int(enabled), event_id))
+                if enabled is not None:
+                    cursor.execute('UPDATE events SET time_ms = ?, beat_pos = ?, preset = ?, enabled = ? WHERE id = ?',
+                                   (time_ms, beat_pos, preset, int(enabled), event_id))
+                else:
+                    cursor.execute('UPDATE events SET time_ms = ?, beat_pos = ?, preset = ? WHERE id = ?',
+                                   (time_ms, beat_pos, preset, event_id))
                 conn.commit()
         except Exception as e:
-            logging.error(f"VISKO DB Error (update_event): {e}")
+            logging.error(f"FARIA DB Error (update_event): {e}")
 
     def delete_event(self, event_id: int):
         try:
@@ -128,5 +156,5 @@ class ViskoDB:
                 cursor.execute('DELETE FROM events WHERE id = ?', (event_id,))
                 conn.commit()
         except Exception as e:
-            logging.error(f"VISKO DB Error (delete_event): {e}")
+            logging.error(f"FARIA DB Error (delete_event): {e}")
 
