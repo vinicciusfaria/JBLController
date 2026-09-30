@@ -102,12 +102,17 @@ class FariaEngine:
                         trigger_beat = raw_beat - latency_beats
                         
                         if self.last_position <= trigger_beat <= beat_pos:
-                            preset = ev["preset"]
-                            self.last_triggered_event_id = ev["id"]
-                            asyncio.create_task(self._trigger_preset(preset))
+                            if self.last_triggered_event_id != ev["id"]:
+                                preset = ev["preset"]
+                                self.last_triggered_event_id = ev["id"]
+                                asyncio.create_task(self._trigger_preset(preset))
                             
                 self.last_position = beat_pos
                 self.was_playing = is_playing
+                
+                # Bass cut is available in self.playback.bass_cut for future use
+                bass_cut = getattr(self.playback, "bass_cut", False)
+                self.last_bass_cut = bass_cut
 
             except Exception as e:
                 logging.error(f"FARIA Scheduler Error: {e}")
@@ -144,6 +149,8 @@ class FariaEngine:
                 logging.debug(f"[FARIA FX] Sincronizando com tempo atual (Seek/Play): {best_event['preset']}")
                 self.last_triggered_event_id = best_event["id"]
                 asyncio.create_task(self._trigger_preset(best_event["preset"]))
+        else:
+            self.last_triggered_event_id = None
 
     async def _trigger_preset(self, preset: str):
         logging.debug(f"[FARIA FX] Triggering '{preset}'!")

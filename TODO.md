@@ -26,7 +26,8 @@
 - [x] Thread de telemetria assíncrona UDP a 30 FPS sem travar o loop de áudio.
 - [x] Extração de tempo decorrido oficial imune a preferências visuais de interface (`"get_time elapsed"`).
 - [x] Transmissão de BPM, pitch, volume, crossfader e estado de reprodução.
-- [x] Extração e transmissão dos graves dos decks (`deck 1 eq_low` e `deck 2 eq_low`).
+- [x] Rastreamento de batida absoluta matemática e imune a loops de compasso (`(time - firstbeat) / 60000 * bpm`).
+- [x] Extração e transmissão dos graves dos decks (`deck 1 eq_low` e `deck 2 eq_low`) E dos filtros bipolares (`filter`).
 - [x] Lógica de histerese e desempate de Master Deck por equalização de graves no Python (`playback.py`).
 - [x] Script de compilação facilitado em 1 clique (`build.bat`).
 

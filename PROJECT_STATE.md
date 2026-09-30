@@ -34,9 +34,10 @@ O **JBLController** evoluiu de uma investigação inicial de protocolo BLE para 
 - **Thread UDP Assíncrona:** Ciclo de transmissão a 30 FPS (`127.0.0.1:9666`) isolado do loop de áudio principal do VDJ para latência zero e ausência de travamentos.
 - **Telemetria de Alta Precisão:**
   - Extração de tempo absoluto decorrido via `"get_time elapsed"` e tempo total via `"get_time total"` (imune a preferências de layout do usuário no VDJ).
+  - Cálculo contínuo de batida absoluta matemática `(timeMs - firstBeatMs) / 60000.0 * bpm`, contornando a limitação nativa do `SongPosBeats` do VDJ (que reiniciava em loop dentro de compassos de 4 tempos).
   - Status de reprodução (`play`), detecção de pitch e BPM.
-  - Monitoramento de volume e crossfader.
-  - Extração dos níveis de equalização de graves dos decks ativos (`deck 1 eq_low` e `deck 2 eq_low`).
+  - Monitoramento de volume e crossfader com memorização inteligente de canal (`cachedDeck`).
+  - Extração dos níveis de equalização de graves dos decks ativos (`deck 1 eq_low` e `deck 2 eq_low`) e filtros bipolares de frequência (`deck 1 filter` e `deck 2 filter`), viabilizando detecção de sweeps e cortes de grave em High-Pass.
 - **Facilidade de Compilação:** Script `build.bat` pronto para compilação em 1 clique via MSVC e cópia direta para a pasta de plugins do VirtualDJ.
 
 ---
@@ -44,11 +45,13 @@ O **JBLController** evoluiu de uma investigação inicial de protocolo BLE para 
 ## 5. Interface Web & Automação (CONCLUÍDO)
 - **Mesa de DJ Responsiva:** Dark theme com Color Wheel canvas interativa, barras de progresso de status BLE, controles de intensidade e velocidade.
 - **Tradução em Tempo Real:** Mapeamento integral de todos os nomes de efeitos de fábrica para português amigável ao operador (`EFFECT_NAMES_PT`).
-- **Criador de Cues Dinâmicos:**
+- **Criador de Cues Dinâmicos em Formato Bar/Compasso:**
+  - Suporte nativo a timecode em compassos musicais (ex: `17.1`).
   - Botões de marcação rápida de cores estáticas primárias (`RED`, `GREEN`, `BLUE`).
   - Botão de "Snapshot" personalizado: empacota a cor exata da roda e os efeitos atuais de Stick e Beam em JSON e armazena na linha do tempo da música.
+  - **Preview Físico Instantâneo:** Ao clicar em Copiar (📋) ou Editar (✏️) um Cue na lista, as caixas JBL físicas mudam imediatamente para a cor e efeito correspondentes para conferência em tempo real.
   - Visualização formatada dos Cues na listagem com indicador visual de cor e efeitos.
-- **Sincronia à Prova de Backspins:** Acompanhamento automático da iluminação mesmo durante manipulação manual rápida do disco/jog wheel.
+- **Sincronia à Prova de Backspins & Rewind:** Acompanhamento automático da iluminação mesmo durante manipulação manual rápida do disco/jog wheel, com reset automático do disparador ao retroceder antes do ponto de corte.
 
 ---
 

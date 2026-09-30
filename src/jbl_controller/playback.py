@@ -42,6 +42,21 @@ class VirtualDJSource(PlaybackSource):
         self.length_ms = 0
         self.on_sync_callback = None
         
+        # Dual-Deck Tracking
+        self.decks = {
+            1: {
+                "track": "", "pos_ms": 0, "beat_pos": 0.0, "playing": False,
+                "bpm": 0.0, "pitch": 0.0, "length_ms": 0, "vol": 1.0, "last_update": 0.0
+            },
+            2: {
+                "track": "", "pos_ms": 0, "beat_pos": 0.0, "playing": False,
+                "bpm": 0.0, "pitch": 0.0, "length_ms": 0, "vol": 1.0, "last_update": 0.0
+            }
+        }
+        self.current_master_deck = 1
+        self.crossfader = 0.5
+        self.eq_low = {1: 0.5, 2: 0.5}
+
         # Internal timer for Mock behavior (when VDJ is offline)
         self._last_play_time = 0
         self._last_udp_update = 0
@@ -62,101 +77,129 @@ class VirtualDJSource(PlaybackSource):
             self.transport.close()
 
     # --- UDP Update (Called by Protocol) ---
-    def update_from_udp(self, track_path: str, pos_ms: int, playing: bool, bpm: float = 0, length_ms: int = 0, deck: int = 1, vol: float = 0, cross_result: float = 1.0, pitch: float = 0.0, eq_low_1: float = 0.5, eq_low_2: float = 0.5, hr1: int = 0, hr2: int = 0, filter_1: float = 0.5, beat_pos: float = 0.0):
+    def update_from_udp(self, track_path: str, pos_ms: int, playing: bool, bpm: float = 0, length_ms: int = 0, deck: int = 1, vol: float = 0, cross_result: float = 1.0, pitch: float = 0.0, eq_low_1: float = 0.5, eq_low_2: float = 0.5, hr1: int = 0, hr2: int = 0, filter_1: float = 0.5, filter_2: float = 0.5, beat_pos: float = 0.0, vol_1: float = None, vol_2: float = None, master_deck: int = None):
         basename = os.path.basename(track_path) if track_path else ""
-        if beat_pos == 0.0 and pos_ms > 0 and bpm > 0:
+        if beat_pos is None and pos_ms > 0 and bpm > 0:
             beat_pos = (pos_ms / 60000.0) * bpm
+        
+        if beat_pos is None:
+            beat_pos = 0.0
+            
+        now = time.time()
         needs_sync = False
         
-        # O VirtualDJ agora manda o "crossfader_result" que já faz toda a conta!
-        # Se for > 0.1, a música está audível na master.
-        # Lógica inteligente de Master Deck com Histerese (anti-flicker) no centro (0.5)
-        is_master_deck = (basename == self._filename and basename != "")
-        is_new_track = (basename != self._filename and basename != "")
-        master = False
+        # Save shared mixer states
+        self.crossfader = cross_result
+        self.eq_low[1] = eq_low_1
+        self.eq_low[2] = eq_low_2
         
+        # Identify deck (1 or 2)
+        deck_idx = deck
+        if deck not in (1, 2):
+            if basename and basename == self.decks[1]["track"]: deck_idx = 1
+            elif basename and basename == self.decks[2]["track"]: deck_idx = 2
+            elif vol_1 is not None and vol_2 is not None and abs(vol - vol_1) < 0.01 and abs(vol - vol_2) > 0.01: deck_idx = 1
+            elif vol_1 is not None and vol_2 is not None and abs(vol - vol_2) < 0.01 and abs(vol - vol_1) > 0.01: deck_idx = 2
+            else: deck_idx = master_deck if (master_deck in (1, 2)) else self.current_master_deck
 
+        effective_vol_1 = vol_1 if vol_1 is not None else (vol if deck_idx == 1 else self.decks[1]["vol"])
+        effective_vol_2 = vol_2 if vol_2 is not None else (vol if deck_idx == 2 else self.decks[2]["vol"])
 
-        if is_new_track and playing and vol > 0.1:
-            can_take_over = False
-            
-            # 1. Se puxou o crossfader pro lado dele, ele rouba na hora
-            if deck == 1 and cross_result < 0.5:
-                can_take_over = True
-            elif deck == 2 and cross_result > 0.5:
-                can_take_over = True
-                
-            # 2. Se tá no meio (entre 0.4 e 0.6), a troca de graves domina!
-            elif 0.4 <= cross_result <= 0.6:
-                other_deck = 2 if deck == 1 else 1
-                my_eq = eq_low_1 if deck == 1 else eq_low_2
-                other_eq = eq_low_2 if deck == 1 else eq_low_1
-                
-                logging.debug(f"[VDJ EQ] Deck {deck} (eq={my_eq:.2f}) vs Deck {other_deck} (eq={other_eq:.2f})")
-                
-                # Se o meu grave for visivelmente maior que o do outro (ex: 0.5 contra 0.2)
-                if my_eq > (other_eq + 0.1):
-                    can_take_over = True
-                elif not self._playing or self._filename == "":
-                    can_take_over = True
+        if basename != "":
+            self.decks[deck_idx]["track"] = basename
+        self.decks[deck_idx]["pos_ms"] = pos_ms
+        self.decks[deck_idx]["beat_pos"] = beat_pos
+        self.decks[deck_idx]["playing"] = playing
+        self.decks[deck_idx]["bpm"] = bpm
+        self.decks[deck_idx]["pitch"] = pitch
+        self.decks[deck_idx]["length_ms"] = length_ms
+        self.decks[deck_idx]["last_update"] = now
+        self.decks[1]["vol"] = effective_vol_1
+        self.decks[2]["vol"] = effective_vol_2
 
-            if can_take_over:
-                # # print(f"Master Deck Alterado para Deck {deck}: {basename}")
-                self._filename = basename
-                master = True
-                needs_sync = True
-        elif is_master_deck:
-            # Se é o pacote do deck que já é master, ele continua sendo master
-            master = True
+        # -------------------------------------------------------------
+        # INTELLIGENT MASTER DECK SELECTION
+        # -------------------------------------------------------------
+        d1 = self.decks[1]
+        d2 = self.decks[2]
+        
+        d1_alive = (now - d1["last_update"]) < 3.0 and (d1["track"] != "")
+        d2_alive = (now - d2["last_update"]) < 3.0 and (d2["track"] != "")
+        
+        p1 = d1["playing"] and d1_alive
+        p2 = d2["playing"] and d2_alive
+        v1 = d1["vol"]
+        v2 = d2["vol"]
+        cross = self.crossfader
+        
+        target_master = self.current_master_deck
+        
+        if p1 and not p2: target_master = 1
+        elif p2 and not p1: target_master = 2
+        elif p1 and p2:
+            if self.current_master_deck == 1 and v1 < 0.15 and v2 >= 0.20: target_master = 2
+            elif self.current_master_deck == 2 and v2 < 0.15 and v1 >= 0.20: target_master = 1
+            elif v2 >= (v1 + 0.20): target_master = 2
+            elif v1 >= (v2 + 0.20): target_master = 1
+            elif v1 > 0.4 and v2 > 0.4 and cross <= 0.35: target_master = 1
+            elif v1 > 0.4 and v2 > 0.4 and cross >= 0.65: target_master = 2
+            elif v1 > 0.5 and v2 > 0.5 and 0.35 <= cross <= 0.65:
+                eq1 = self.eq_low[1]
+                eq2 = self.eq_low[2]
+                if eq2 >= (eq1 + 0.15): target_master = 2
+                elif eq1 >= (eq2 + 0.15): target_master = 1
+            elif abs(v1 - v2) < 0.15:
+                target_master = self.current_master_deck
 
-        # Ignora tudo que não for master (ex: decks vazios ou decks tocando mutados)
-        if not master:
-            return
+        if target_master != self.current_master_deck:
+            logging.info(f"[VDJ MASTER] Deck {self.current_master_deck} -> Deck {target_master}: {self.decks[target_master]['track']}")
+            self.current_master_deck = target_master
+            needs_sync = True
 
-        if playing:
-            if not self._playing:
-                needs_sync = True
-                if basename != "":
-                    pass  # print(f"Play Detectado: {basename} ({pos_ms}ms, BPM={bpm}, Pitch={pitch})")
-            
-            if abs(self.get_position_ms() - pos_ms) > 500:
-                needs_sync = True
-                
-            if abs(self.bpm - bpm) > 0.1:
-                needs_sync = True
-                
-            if abs(self.pitch - pitch) > 0.01:
-                needs_sync = True
-                
-            self._filename = basename
-            self._position = pos_ms
-            self._beat_pos = beat_pos
-            self._playing = True
-            self.bpm = bpm
-            self.pitch = pitch
-            self.length_ms = length_ms
-            self._last_play_time = time.time()
+        active = self.decks[self.current_master_deck]
+        
+        # -------------------------------------------------------------
+        # BASS CUT LOGIC (EQ Low + Filter High-Pass)
+        # -------------------------------------------------------------
+        low_val = eq_low_1 if target_master == 1 else eq_low_2
+        filter_val = filter_1 if target_master == 1 else filter_2
+        
+        if p1 and p2 and v1 > 0.2 and v2 > 0.2 and 0.3 <= cross <= 0.7:
+            # During a mix, only trigger bass cut if BOTH decks have bass cut
+            eff_low_1 = min(eq_low_1, max(0.0, 1.0 - (filter_1 - 0.5) * 2.0) if filter_1 >= 0.5 else eq_low_1)
+            eff_low_2 = min(eq_low_2, max(0.0, 1.0 - (filter_2 - 0.5) * 2.0) if filter_2 >= 0.5 else eq_low_2)
+            actual_low = max(eff_low_1, eff_low_2)
         else:
+            eff_low_filter = max(0.0, 1.0 - (filter_val - 0.5) * 2.0) if filter_val >= 0.5 else low_val
+            actual_low = min(low_val, eff_low_filter)
+            
+        self.bass_cut = actual_low < 0.15
+
+        if deck_idx == self.current_master_deck or needs_sync:
+            old_filename = self._filename
+            old_playing = self._playing
+            
+            self._filename = active["track"]
+            self._position = active["pos_ms"]
+            self._beat_pos = active["beat_pos"]
+            self._playing = active["playing"]
+            self.bpm = active["bpm"]
+            self.pitch = active["pitch"]
+            self.length_ms = active["length_ms"]
+            
             if self._playing:
-                needs_sync = True
-            if abs(self._position - pos_ms) > 500:
+                self._last_play_time = now
+                
+            if old_filename != self._filename or old_playing != self._playing:
                 needs_sync = True
                 
-            self._filename = basename
-            self._position = pos_ms
-            self._beat_pos = beat_pos
-            self._playing = False
-            self.bpm = bpm
-            self.pitch = pitch
-            self.length_ms = length_ms
-                
-        self._last_udp_update = time.time()
+        self._last_udp_update = now
         
-        if time.time() - getattr(self, "_last_sync_time", 0) > 1.0:
+        if now - getattr(self, "_last_sync_time", 0) > 1.0:
             needs_sync = True
             
         if needs_sync and self.on_sync_callback:
-            self._last_sync_time = time.time()
+            self._last_sync_time = now
             asyncio.create_task(self.on_sync_callback())
 
     # --- Mock Overrides (Called by UI) ---
@@ -167,6 +210,7 @@ class VirtualDJSource(PlaybackSource):
     @filename.setter
     def filename(self, val):
         self._filename = val
+        self.decks[self.current_master_deck]["track"] = val
         
     @property
     def position(self):
@@ -184,6 +228,8 @@ class VirtualDJSource(PlaybackSource):
         self._position = val
         bpm = self.bpm if self.bpm > 0 else 120.0
         self._beat_pos = (val / 60000.0) * bpm
+        self.decks[self.current_master_deck]["pos_ms"] = val
+        self.decks[self.current_master_deck]["beat_pos"] = self._beat_pos
         if self._playing:
             self._last_play_time = time.time()
             
@@ -202,6 +248,7 @@ class VirtualDJSource(PlaybackSource):
                 pitch_mult = 1.0 + (self.pitch / 100.0)
                 self._position += int((time.time() - self._last_play_time) * 1000 * pitch_mult)
         self._playing = is_playing
+        self.decks[self.current_master_deck]["playing"] = is_playing
 
     # --- PlaybackSource Interface ---
     def get_current_track(self) -> str:
@@ -246,7 +293,11 @@ class VDJUDPProtocol(asyncio.DatagramProtocol):
                 payload.get("hr1", 0),
                 payload.get("hr2", 0),
                 payload.get("filter_1", 0.5),
-                payload.get("beat", 0.0)
+                payload.get("filter_2", 0.5),
+                payload.get("beat", 0.0),
+                vol_1=payload.get("vol_1"),
+                vol_2=payload.get("vol_2"),
+                master_deck=payload.get("master_deck")
             )
         except Exception as e:
             logging.error(f"Erro UDP VDJ: {e} - Dados recebidos: {data}")

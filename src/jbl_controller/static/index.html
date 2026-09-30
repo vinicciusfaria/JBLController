@@ -339,8 +339,8 @@
       }
       </script>
       <div class="label">ADICIONAR CUE MANUALMENTE</div>
-      <div style="display: flex; gap: 5px;"
-        <input type="text" id="newCueTime" placeholder="MM:SS.mmm" style="flex: 1; background: #333; color: #fff; border: 1px solid #555; padding: 5px; border-radius: 4px;">
+      <div style="display: flex; gap: 5px;">
+        <input type="text" id="newCueTime" placeholder="BAR (ex: 17.1)" style="flex: 1; background: #333; color: #fff; border: 1px solid #555; padding: 5px; border-radius: 4px;">
         <select id="newCuePreset" style="flex: 1; background: #333; color: #fff; border: 1px solid #555; padding: 5px; border-radius: 4px;">
             <option value="WARMUP">WARMUP</option>
             <option value="BUILD">BUILD</option>
@@ -522,25 +522,46 @@
         return isNeg ? -parsed : parsed;
     }
 
+    function previewPreset(presetStr) {
+        if (presetStr.startsWith('{')) {
+            try {
+                let p = JSON.parse(presetStr);
+                if (p.color) sendAction('set_color', {color: p.color});
+                if (p.stick) sendAction('set_stick_effect', {effect: p.stick});
+                if (p.beam) sendAction('set_beam_effect', {effect: p.beam});
+            } catch(e) {}
+        } else {
+            sendAction('preset', {preset: presetStr});
+        }
+    }
+
     function editEvent(id, oldTime, oldBeat, oldPreset) {
-        let newBeatStr = prompt("Editar tempo em BARS (ex: 17.1):", formatBeatToBars(oldBeat));
-        if (!newBeatStr) return;
-        let newBeat = parseBarsToBeat(newBeatStr);
-        if (isNaN(newBeat)) newBeat = oldBeat;
+        previewPreset(oldPreset);
         
-        let newPreset = prompt("Editar preset:", oldPreset);
-        if (!newPreset) return;
-        
-        sendAction('edit_event', {id: id, time_ms: oldTime, beat_pos: newBeat, preset: newPreset});
+        setTimeout(() => {
+            let newBeatStr = prompt("Editar tempo em BARS (ex: 17.1):", formatBeatToBars(oldBeat));
+            if (!newBeatStr) return;
+            let newBeat = parseBarsToBeat(newBeatStr);
+            if (isNaN(newBeat)) newBeat = oldBeat;
+            
+            let newPreset = prompt("Editar preset:", oldPreset);
+            if (!newPreset) return;
+            
+            sendAction('edit_event', {id: id, time_ms: oldTime, beat_pos: newBeat, preset: newPreset});
+        }, 50);
     }
 
     function copyEvent(id, oldTime, oldBeat, oldPreset) {
-        let newBeatStr = prompt("Copiar para qual BAR (ex: 17.1)?", formatBeatToBars(oldBeat + 4)); // + 1 bar
-        if (!newBeatStr) return;
-        let newBeat = parseBarsToBeat(newBeatStr);
-        if (isNaN(newBeat)) return;
+        previewPreset(oldPreset);
         
-        sendAction('add_event', {time_ms: oldTime, beat_pos: newBeat, preset: oldPreset});
+        setTimeout(() => {
+            let newBeatStr = prompt("Copiar para qual BAR (ex: 17.1)?", formatBeatToBars(oldBeat + 4)); // + 1 bar
+            if (!newBeatStr) return;
+            let newBeat = parseBarsToBeat(newBeatStr);
+            if (isNaN(newBeat)) return;
+            
+            sendAction('add_event', {time_ms: oldTime, beat_pos: newBeat, preset: oldPreset});
+        }, 50);
     }
 
     // FARIA TIME LOGIC
@@ -603,14 +624,14 @@
     }
     
     function addFariaCue() {
-        let tcStr = document.getElementById('newCueTime').value;
+        let beatStr = document.getElementById('newCueTime').value;
         let preset = document.getElementById('newCuePreset').value;
-        let ms = parseTimecodeToMs(tcStr);
-        if (ms > 0 || tcStr === "00:00.000" || tcStr === "00:00") {
-            sendAction('faria_add_event', {time_ms: ms, preset: preset});
+        let beat = parseBarsToBeat(beatStr);
+        if (!isNaN(beat)) {
+            sendAction('add_event', {beat_pos: beat, time_ms: 0, preset: preset});
             document.getElementById('newCueTime').value = '';
         } else {
-            alert('Formato inválido. Use MM:SS ou MM:SS.mmm');
+            alert('Formato inválido. Use o número da batida/bar (ex: 17.1)');
         }
     }
 

@@ -118,9 +118,14 @@ private:
 
                 if (cb->GetInfo("get_bpm", &bpm) != S_OK || bpm <= 0) cb->GetInfo("bpm", &bpm);
 
-                // Recupera o tempo exato em milissegundos
                 cb->GetInfo("get_time elapsed", &timeMs);
                 cb->GetInfo("get_time total", &lengthMs); 
+
+                double firstBeatMs = 0;
+                if (cb->GetInfo("firstbeat", &firstBeatMs) != S_OK) {
+                    cb->GetInfo("get_firstbeat", &firstBeatMs);
+                }
+                beatPos = ((timeMs - firstBeatMs) / 60000.0) * bpm;
 
 
 
@@ -131,8 +136,11 @@ private:
 
 
                 double pluginDeck = 0;
-
-                cb->GetInfo("get_plugindeck", &pluginDeck);
+                if (cb->GetInfo("get_plugindeck", &pluginDeck) != S_OK || pluginDeck <= 0) {
+                    if (cb->GetInfo("deck", &pluginDeck) != S_OK || pluginDeck <= 0) {
+                        pluginDeck = 0;
+                    }
+                }
 
                 
 
@@ -143,10 +151,24 @@ private:
                 
 
                 double volume = 0;
-
                 if (cb->GetInfo("volume", &volume) != S_OK) volume = 1.0;
 
+                double vol_1 = 1.0;
+                if (cb->GetInfo("deck 1 volume", &vol_1) != S_OK) vol_1 = volume;
+
+                double vol_2 = 1.0;
+                if (cb->GetInfo("deck 2 volume", &vol_2) != S_OK) vol_2 = volume;
                 
+                if (pluginDeck <= 0) {
+                    if (cachedDeck == 0) {
+                        if (abs(volume - vol_1) < 0.01 && abs(volume - vol_2) > 0.01) cachedDeck = 1;
+                        else if (abs(volume - vol_2) < 0.01 && abs(volume - vol_1) > 0.01) cachedDeck = 2;
+                    }
+                    pluginDeck = cachedDeck;
+                }
+
+                double masterDeck = 0;
+                cb->GetInfo("masterdeck", &masterDeck);
 
                 double crossfader = 0.5;
 
@@ -167,36 +189,25 @@ private:
                 
 
                 double filter_1 = 0.5;
-
                 cb->GetInfo("deck 1 filter", &filter_1);
-
                 
-
-
+                double filter_2 = 0.5;
+                cb->GetInfo("deck 2 filter", &filter_2);
 
                 std::string safePath = escapeJsonString(std::string(filepath));
-
                 
-
                 // Se safePath for vazio, manda tambem! Python filtra!
-
                 std::string payload = "{\"track\":\"" + safePath + "\",\"pos\":" + std::to_string((int)timeMs) + 
-
                                       ",\"beat\":" + doubleToStr(beatPos) + 
-
                                       ",\"play\":" + (isPlaying > 0.5 ? "true" : "false") + 
-
                                       ",\"bpm\":" + doubleToStr(bpm) + 
-
                                       ",\"length_ms\":" + std::to_string((int)lengthMs) + 
-
                                       ",\"deck\":" + std::to_string((int)pluginDeck) + 
-
                                       ",\"pitch\":" + doubleToStr(pitch) + 
-
                                       ",\"vol\":" + doubleToStr(volume) + 
-
-                                      ",\"cross_result\":" + doubleToStr(crossfader) + ",\"eq_low_1\":" + doubleToStr(eq_low_1) + ",\"eq_low_2\":" + doubleToStr(eq_low_2) + "}";
+                                      ",\"vol_1\":" + doubleToStr(vol_1) + ",\"vol_2\":" + doubleToStr(vol_2) + ",\"master_deck\":" + std::to_string((int)masterDeck) + 
+                                      ",\"cross_result\":" + doubleToStr(crossfader) + ",\"eq_low_1\":" + doubleToStr(eq_low_1) + ",\"eq_low_2\":" + doubleToStr(eq_low_2) + 
+                                      ",\"filter_1\":" + doubleToStr(filter_1) + ",\"filter_2\":" + doubleToStr(filter_2) + "}";
 
 
 
@@ -213,8 +224,9 @@ private:
 
 
 public:
+    int cachedDeck;
 
-    FariaLightFXPlugin() : udpSocket(INVALID_SOCKET), socketReady(false), stopThread(false) {
+    FariaLightFXPlugin() : udpSocket(INVALID_SOCKET), socketReady(false), stopThread(false), cachedDeck(0) {
         currentBeatPos.store(0.0);
     }
 

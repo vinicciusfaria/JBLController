@@ -114,6 +114,46 @@ class TestFariaEngine(unittest.IsolatedAsyncioTestCase):
         await asyncio.sleep(0.2)
         self.assertNotIn("BUILD", self.controller.triggered)
 
+    async def test_fader_transition_takes_over_master(self):
+        # Deck 1 starts playing with fader 1.0
+        self.playback.update_from_udp("SongA.mp3", 1000, True, 128.0, 180000, deck=1, vol=1.0, cross_result=0.5)
+        self.assertEqual(self.playback.current_master_deck, 1)
+        self.assertEqual(self.playback.get_current_track(), "SongA.mp3")
+
+        # Deck 2 starts playing with fader 0.0 (crossfader still in middle 0.5)
+        self.playback.update_from_udp("SongB.mp3", 500, True, 130.0, 200000, deck=2, vol=0.0, cross_result=0.5)
+        self.assertEqual(self.playback.current_master_deck, 1)
+        self.assertEqual(self.playback.get_current_track(), "SongA.mp3")
+
+        # DJ lowers Deck 1 fader to 0.1 and raises Deck 2 fader to 0.9 (without touching crossfader!)
+        self.playback.update_from_udp("SongA.mp3", 2000, True, 128.0, 180000, deck=1, vol=0.1, cross_result=0.5)
+        self.playback.update_from_udp("SongB.mp3", 1500, True, 130.0, 200000, deck=2, vol=0.9, cross_result=0.5)
+        
+        # Deck 2 must be the new master!
+        self.assertEqual(self.playback.current_master_deck, 2)
+        self.assertEqual(self.playback.get_current_track(), "SongB.mp3")
+
+    async def test_bass_swap_takes_over_master(self):
+        # Both decks playing with faders at 1.0, crossfader centered
+        self.playback.update_from_udp("SongA.mp3", 5000, True, 128.0, 180000, deck=1, vol=1.0, cross_result=0.5, eq_low_1=0.5, eq_low_2=0.5)
+        self.playback.update_from_udp("SongB.mp3", 5000, True, 128.0, 180000, deck=2, vol=1.0, cross_result=0.5, eq_low_1=0.5, eq_low_2=0.5)
+        self.assertEqual(self.playback.current_master_deck, 1)
+
+        # DJ cuts bass on Deck 1 and boosts bass on Deck 2
+        self.playback.update_from_udp("SongB.mp3", 6000, True, 128.0, 180000, deck=2, vol=1.0, cross_result=0.5, eq_low_1=0.2, eq_low_2=0.6)
+        self.assertEqual(self.playback.current_master_deck, 2)
+        self.assertEqual(self.playback.get_current_track(), "SongB.mp3")
+
+    async def test_crossfader_cut_takes_over_master(self):
+        # Deck 1 is master
+        self.playback.update_from_udp("SongA.mp3", 1000, True, 128.0, 180000, deck=1, vol=1.0, cross_result=0.2)
+        self.assertEqual(self.playback.current_master_deck, 1)
+
+        # DJ cuts crossfader to Deck 2 (0.8)
+        self.playback.update_from_udp("SongB.mp3", 1000, True, 128.0, 180000, deck=2, vol=1.0, cross_result=0.8)
+        self.assertEqual(self.playback.current_master_deck, 2)
+        self.assertEqual(self.playback.get_current_track(), "SongB.mp3")
+
 
 if __name__ == "__main__":
     unittest.main()
