@@ -1,6 +1,6 @@
 # JBLController
 
-Controlador em Python e C++ para os dispositivos de iluminação **JBL PartyLight Stick** e **JBL PartyLight Beam**, com suporte a controle manual via interface web e automação de iluminação sincronizada por timecode para o **VirtualDJ**.
+Controlador em Python e C++ para os dispositivos de iluminação **JBL PartyLight Stick** e **JBL PartyLight Beam**, com suporte a controle manual via interface web e automação de iluminação sincronizada por timecode para o **VirtualDJ**. O projeto nasceu para superar as limitações do **JBL One**, que não permite o controle simultâneo de Sticks e Beams sem uma caixa JBL com Auracast e é de uso exclusivo para celulares. O software faz engenharia reversa do protocolo Bluetooth Low Energy (BLE) dos dispositivos, permitindo um maior controle sobre a iluminação, além de automatizar o timecode em tempo real sincronizado com o **VirtualDJ**.
 
 ---
 
