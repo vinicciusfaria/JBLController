@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JBL PartyLight Controller</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #222;
+        color: #fff;
+        margin: 0;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .panel {
+        background: #333;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 15px;
+        width: 100%;
+        max-width: 480px;
+        box-sizing: border-box;
+    }
+
+    .label {
+        font-size: 12px;
+        font-weight: bold;
+        margin-bottom: 5px;
+        color: #aaa;
+    }
+    
+    .status-area {
+        text-align: center;
+        border: 2px solid #555;
+    }
+
+    .status-item {
+        margin: 5px 0;
+        font-size: 14px;
+    }
+
+    .status-value {
+        font-weight: bold;
+        color: #00e676;
+    }
+
+    .device-list {
+        margin-top: 10px;
+        font-size: 12px;
+        text-align: left;
+        background: #222;
+        padding: 5px;
+        border-radius: 4px;
+    }
+
+    .device-item {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 3px;
+    }
+
+    .device-status {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+    
+    .device-online { background-color: #00e676; }
+    .device-offline { background-color: #f44336; }
+
+    .button-row {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+
+    button {
+        flex: 1;
+        padding: 10px;
+        border: none;
+        border-radius: 4px;
+        background-color: #555;
+        color: #fff;
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+    button:active {
+        background-color: #777;
+    }
+    
+    button.special {
+        background-color: #1976d2;
+    }
+
+    button.danger {
+        background-color: #d32f2f;
+    }
+
+    input[type=range] {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+    
+    .effect-display {
+        text-align: center;
+        font-size: 24px;
+        font-weight: bold;
+        color: #00e676;
+        margin: 10px 0;
+    }
+    
+    .color-section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    #colorWheel {
+        border-radius: 50%;
+        cursor: crosshair;
+        box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    }
+    
+    .queue-container {
+        display: flex;
+        gap: 5px;
+        overflow-x: auto;
+        padding: 10px 0;
+        min-height: 30px;
+        background: #222;
+        border-radius: 4px;
+        padding: 5px;
+        margin-bottom: 10px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    .queue-dot {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        border: 2px solid #555;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+    }
+    
+</style>
+</head>
+<body>
+
+<div class="panel status-area">
+    <h2><span id="comboName">CONECTANDO...</span></h2>
+    <div class="status-item">Beam: <span class="status-value" id="beamEffect">--</span></div>
+    <div class="status-item">Sticks: <span class="status-value" id="stickEffect">--</span></div>
+    <div class="device-list" id="deviceList"></div>
+</div>
+
+<div class="panel color-section">
+    <div class="label">COLOR PICKER (Preview)</div>
+    <canvas id="colorWheel" width="250" height="250"></canvas>
+    
+    <div class="label">LUMINOSIDADE</div>
+    <input type="range" id="lumSlider" min="0" max="100" value="50">
+
+    <div style="margin: 15px 0; text-align: center; display: flex; flex-direction: column; align-items: center;">
+        <div style="display: flex; border: 2px solid #555; border-radius: 4px; overflow: hidden; width: 100px; height: 50px;">
+            <div id="currentColorBox" style="flex: 1; background-color: #f00;" title="Cor Atual na Caixa"></div>
+            <div id="previewColorBox" style="flex: 1; background-color: #f00;" title="Cor Nova (Preview)"></div>
+        </div>
+        <div style="display: flex; width: 100px; justify-content: space-between; font-size: 10px; color: #888; margin-top: 4px;">
+            <span>ATUAL</span>
+            <span>NOVA</span>
+        </div>
+        <div style="margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 5px;">
+            <label style="font-size: 12px; color: #ccc;">RGB:</label>
+            <input type="text" id="rgbInput" value="255, 0, 0" style="width: 100px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; padding: 4px; text-align: center; font-family: monospace;" onchange="manualRGBInput()">
+        </div>
+    </div>
+    
+    <div class="button-row">
+        <button onclick="sendAction('add_color', {color: previewColor})">+ ADICIONAR À FILA</button>
+    </div>
+    
+    <div class="label" style="margin-top: 15px;">FILA DE CORES</div>
+    <div class="queue-container" id="colorQueue"></div>
+    
+    <div class="button-row">
+        <button onclick="sendAction('next_color')" style="background-color: #00e676; color: #000;">PRÓXIMA COR (Aplicar e Remover) &rarr;</button>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="label">EFEITO APLICADO</div>
+    <div style="display: flex; justify-content: space-around; margin: 5px 0;">
+        <div style="text-align: center; flex: 1;">
+            <div class="label" style="margin-bottom: 5px;">STICKS</div>
+            <div style="display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; color: #ff9800; cursor: pointer; user-select: none;">
+                <div onclick="prevStickEffect()" style="padding: 10px;">&lt;</div>
+                <div id="mainStickEffect" style="width: 170px; text-align: center;">NEON</div>
+                <div onclick="nextStickEffect()" style="padding: 10px;">&gt;</div>
+            </div>
+        </div>
+        <div style="width: 1px; background-color: #444; margin: 0 15px;"></div>
+        <div style="text-align: center; flex: 1;">
+            <div class="label" style="margin-bottom: 5px;">BEAM</div>
+            <div style="display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; color: #00e676; cursor: pointer; user-select: none;">
+                <div onclick="prevBeamEffect()" style="padding: 10px;">&lt;</div>
+                <div id="mainBeamEffect" style="width: 170px; text-align: center;">NEON</div>
+                <div onclick="nextBeamEffect()" style="padding: 10px;">&gt;</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="label">BRILHO FÍSICO</div>
+    <input type="range" id="brightnessSlider" min="0" max="100" value="50" onchange="sendAction('set_brightness', {level: parseInt(this.value)})">
+    
+    <div class="label" style="margin-top: 15px;">VELOCIDADE</div>
+    <input type="range" id="speedSlider" min="0" max="100" value="50" onchange="sendAction('set_speed', {level: parseInt(this.value)})">
+</div>
+
+<div class="panel">
+    <div class="label">CONTROLE DO SET</div>
+    <div class="button-row">
+        <button class="special" onclick="sendAction('start_set')" style="background-color: #4caf50;">INICIAR SET (Fade In)</button>
+        <button class="danger" onclick="sendAction('end_set')">FINALIZAR SET (Fade Out)</button>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="label">BOTÕES ESPECIAIS</div>
+    <div class="button-row">
+        <button class="special" onclick="sendAction('solid')">COR SÓLIDA</button>
+        <button class="danger" onclick="sendAction('blackout')">BLACKOUT</button>
+    </div>
+    <div class="button-row">
+        <button class="special" onclick="sendAction('fuego')" style="background-color: #ff5722;">FUEGO</button>
+        <button class="special" onclick="sendAction('strobo')" style="background-color: #fff; color: #000;">STROBO</button>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="label">PRESETS RÁPIDOS</div>
+    <div class="button-row">
+        <button onclick="sendAction('preset', {preset: 'warmup'})">WARMUP</button>
+        <button onclick="sendAction('preset', {preset: 'build'})">BUILD</button>
+        <button onclick="sendAction('preset', {preset: 'drop'})">DROP</button>
+    </div>
+    <div class="button-row">
+        <button onclick="sendAction('preset', {preset: 'break_'})">BREAK</button>
+        <button onclick="sendAction('preset', {preset: 'calm'})">CALM</button>
+        <button onclick="sendAction('preset', {preset: 'rave'})">RAVE</button>
+    </div>
+</div>
+
+<div class="panel" style="border: 2px solid #9c27b0;">
+    <div class="label" style="color: #e1bee7;">VISKO LIGHT FX (Timecode Automation)</div>
+    
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+        <div style="display: flex; flex-direction: column; gap: 5px;">
+            <label style="font-weight: bold; color: #fff;">
+                <input type="checkbox" id="viskoFollow" checked onchange="sendAction('visko_set_follow', {value: this.checked})"> SEGUIR CUES
+            </label>
+            <label style="font-weight: bold; color: #fff; font-size: 12px;">
+                <input type="checkbox" id="viskoRandom" onchange="sendAction('visko_set_random', {value: this.checked})"> COR RANDOM (NOVA TRACK)
+            </label>
+        </div>
+        <div>
+            <label style="font-size: 10px; color: #aaa;">Latência (ms):</label>
+            <input type="number" id="viskoLatency" style="width: 50px; background: #222; color: #fff; border: 1px solid #555; border-radius: 4px;" onchange="sendAction('visko_set_latency', {value: parseInt(this.value)})">
+        </div>
+    </div>
+    
+    <div style="background: #222; padding: 10px; border-radius: 4px; margin-bottom: 10px;">
+        <div class="label">STATUS DO VIRTUALDJ (Ao Vivo)</div>
+        <div style="display: flex; gap: 5px; margin-bottom: 5px;">
+            <input type="text" id="mockTrack" readonly placeholder="Aguardando VirtualDJ..." style="flex: 1; background: #222; color: #00e676; border: 1px solid #555; padding: 5px; border-radius: 4px; font-weight: bold; font-family: monospace;">
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <button id="mockPlayBtn" onclick="sendAction('mock_play_pause')" style="flex: 0 0 auto; padding: 5px 15px; background: #4caf50;">PLAY</button>
+            <div style="font-family: monospace; font-size: 18px; font-weight: bold; color: #00e676;" id="mockPosition"><span id="mockPosition">00:00.000</span> / <span id="mockLength">00:00.000</span> <span style="margin-left: 10px; color: #ff9800;">BPM: <span id="mockBpm">0.0</span></span></div>
+            <input type="range" id="mockSeek" min="0" max="300000" value="0" style="flex: 1; pointer-events: none;" disabled>
+        </div>
+    </div>
+    
+    <div class="label">CUES DA MÚSICA ATUAL</div>
+    <div id="viskoEventsList" style="background: #222; min-height: 50px; border-radius: 4px; padding: 5px; margin-bottom: 10px; max-height: 150px; overflow-y: auto;">
+        <!-- Events injected here -->
+      </div>
+
+      <div class="label" style="margin-top: 10px; text-align: center; color: yellow;">MARCACAO EM TEMPO REAL</div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin-bottom: 10px;">
+          <button onclick="sendAction('add_event', {preset: 'RED'})" style="background: #ff0000; color: #fff; font-weight: bold; padding: 15px;">RED AQUI</button>
+          <button onclick="sendAction('add_event', {preset: 'GREEN'})" style="background: #00ff00; color: #000; font-weight: bold; padding: 15px;">GREEN AQUI</button>
+          <button onclick="sendAction('add_event', {preset: 'BLUE'})" style="background: #0000ff; color: #fff; font-weight: bold; padding: 15px;">BLUE AQUI</button>
+      </div>
+
+            <div class="label" style="margin-top: 15px; text-align: center; color: #00e676;">CRIAR MARCAO PERSONALIZADA</div>
+      <div style="background: #333; padding: 10px; border-radius: 4px; border: 1px solid #555; text-align: center;">
+          <div style="font-size: 12px; margin-bottom: 5px; color: #aaa;">Vai usar a cor e efeito que voc estiver vendo no painel principal acima!</div>
+          <button onclick="addCustomCueNow()" style="width: 100%; padding: 15px; background: linear-gradient(45deg, #2196f3, #e91e63); color: #fff; font-size: 16px; font-weight: bold; border-radius: 8px;"> MARCAR COM A COR/EFEITO ATUAL </button>
+      </div>
+
+      <script>
+      function addCustomCueNow() {
+          let c = previewColor; // from the wheel
+          let stick = currentState.stick_effect || 'NEON';
+          let beam = currentState.beam_effect || 'NEON';
+          let presetData = {
+              color: c,
+              stick: stick,
+              beam: beam
+          };
+          let presetStr = JSON.stringify(presetData);
+          sendAction('add_event', {preset: presetStr});
+      }
+      </script>
+      <div class="label">ADICIONAR CUE MANUALMENTE</div>
+      <div style="display: flex; gap: 5px;"
+        <input type="text" id="newCueTime" placeholder="MM:SS.mmm" style="flex: 1; background: #333; color: #fff; border: 1px solid #555; padding: 5px; border-radius: 4px;">
+        <select id="newCuePreset" style="flex: 1; background: #333; color: #fff; border: 1px solid #555; padding: 5px; border-radius: 4px;">
+            <option value="WARMUP">WARMUP</option>
+            <option value="BUILD">BUILD</option>
+            <option value="DROP">DROP</option>
+            <option value="BREAK_">BREAK</option>
+            <option value="CALM">CALM</option>
+            <option value="RAVE">RAVE</option>
+            <option value="FUEGO">FUEGO</option>
+            <option value="STROBO">STROBO</option>
+            <option value="BLACKOUT">BLACKOUT</option>
+        </select>
+        <button onclick="addViskoCue()" style="flex: 0 0 auto; background: #9c27b0; padding: 5px 10px;">+ ADICIONAR</button>
+    </div>
+</div>
+
+<script>
+    const ws = new WebSocket(`ws://${window.location.host}/ws`);
+    
+    let currentState = {};
+    let previewColor = [255, 0, 0];
+    const ALL_EFFECTS = ["OFF", "ROCK", "NEON", "CLUB", "FLOW", "RIPPLE", "CROSS", "FLASH", "RANDOM", "LOOP", "BOUNCE", "TRIM", "SWITCH", "FREEZE", "OCEAN", "AURORA", "BLOSSOM", "SUNRISE", "FIREPLACE", "STATIC", "GRAVITY", "LIGHTNING", "GLITCH", "CAMPFIRE", "UNIVERSE", "FIREFLY", "BEER", "STORM", "HOVER", "SKY"];
+    
+    const EFFECT_NAMES_PT = {
+        "OFF": "DESLIGADO", "ROCK": "ROCK", "NEON": "NEON", "CLUB": "CLUB", "FLOW": "FLUXO",
+        "RIPPLE": "ONDULAÇÃO", "CROSS": "CRUZ", "FLASH": "FLASH", "RANDOM": "ALEATÓRIO",
+        "LOOP": "REPETIÇÃO", "BOUNCE": "SALTO", "TRIM": "AJUSTE", "SWITCH": "MUDANÇA", "FREEZE": "CONGELAR",
+        "OCEAN": "MAR", "AURORA": "AURORA", "BLOSSOM": "FLORADA", "SUNRISE": "AMANHECER",
+        "FIREPLACE": "LAREIRA", "STATIC": "ESTÁTICO", "GRAVITY": "GRAVIDADE", "LIGHTNING": "RELÂMPAGO",
+        "GLITCH": "FALHA", "CAMPFIRE": "FOGUEIRA", "UNIVERSE": "UNIVERSO", "FIREFLY": "VAGALUME",
+        "BEER": "CERVEJA", "STORM": "TEMPESTADE", "HOVER": "FLUTUAR", "SKY": "CÉU"
+    };
+    
+    ws.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        if (data.type === "state") {
+            currentState = data.state;
+            updateUI();
+        }
+    };
+
+    function sendAction(action, extraData={}) {
+        ws.send(JSON.stringify({action: action, ...extraData}));
+    }
+
+    function updateUI() {
+        document.getElementById('comboName').innerText = currentState.combination;
+        document.getElementById('beamEffect').innerText = EFFECT_NAMES_PT[currentState.beam_effect] || currentState.beam_effect;
+        document.getElementById('stickEffect').innerText = EFFECT_NAMES_PT[currentState.stick_effect] || currentState.stick_effect;
+        document.getElementById('mainBeamEffect').innerText = EFFECT_NAMES_PT[currentState.beam_effect] || currentState.beam_effect;
+        document.getElementById('mainStickEffect').innerText = EFFECT_NAMES_PT[currentState.stick_effect] || currentState.stick_effect;
+        
+        let c = currentState.color;
+        document.getElementById('currentColorBox').style.backgroundColor = `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
+        
+        document.getElementById('brightnessSlider').value = currentState.brightness;
+        document.getElementById('speedSlider').value = currentState.speed;
+        
+        const dContainer = document.getElementById('deviceList');
+        dContainer.innerHTML = '';
+        if (currentState.devices) {
+            currentState.devices.forEach(dev => {
+                let div = document.createElement('div');
+                div.className = 'device-item';
+                let indicator = dev.connected ? 'device-online' : 'device-offline';
+                div.innerHTML = `<span>${dev.name}</span> <span class="device-status ${indicator}"></span>`;
+                dContainer.appendChild(div);
+            });
+        }
+        
+        const qContainer = document.getElementById('colorQueue');
+        qContainer.innerHTML = '';
+        currentState.queue.forEach((qcolor, index) => {
+            let div = document.createElement('div');
+            div.className = 'queue-dot';
+            div.style.backgroundColor = `rgb(${qcolor[0]}, ${qcolor[1]}, ${qcolor[2]})`;
+            div.style.cursor = 'pointer';
+            div.onclick = () => sendAction('remove_color_idx', {index: index});
+            qContainer.appendChild(div);
+        });
+        
+        // Update VISKO State
+        if (currentState.visko) {
+            document.getElementById('viskoFollow').checked = currentState.visko.follow_cues;
+            document.getElementById('viskoRandom').checked = currentState.visko.random_on;
+            document.getElementById('viskoLatency').value = currentState.visko.latency_ms;
+            
+            document.getElementById('mockTrack').value = currentState.visko.track;
+            document.getElementById('mockPlayBtn').innerText = currentState.visko.is_playing ? "PAUSE" : "PLAY";
+            document.getElementById('mockPlayBtn').style.backgroundColor = currentState.visko.is_playing ? "#f44336" : "#4caf50";
+            
+            if (!isMockSeeking) {
+                document.getElementById('mockSeek').value = currentState.visko.position;
+                document.getElementById('mockSeek').max = currentState.visko.length_ms || 300000;
+                document.getElementById('mockPosition').innerText = formatMsToTimecode(currentState.visko.position);
+                if (document.getElementById('mockLength')) document.getElementById('mockLength').innerText = formatMsToTimecode(currentState.visko.length_ms || 0);
+                if (document.getElementById('mockBpm')) document.getElementById('mockBpm').innerText = (currentState.visko.bpm || 0).toFixed(1);
+            }
+            
+            // Sync local state for loop
+            localViskoPlaying = currentState.visko.is_playing;
+            localViskoPos = currentState.visko.position;
+            lastViskoUpdate = performance.now();
+            
+            // Render events
+            const evList = document.getElementById('viskoEventsList');
+            evList.innerHTML = '';
+            if (currentState.visko.events.length === 0) {
+                evList.innerHTML = '<div style="color:#666; font-size:12px; text-align:center;">Nenhum evento.</div>';
+            } else {
+                currentState.visko.events.forEach(ev => {
+                    let d = document.createElement('div');
+                    d.style.display = 'flex';
+                    d.style.justifyContent = 'space-between';
+                    d.style.alignItems = 'center';
+                    d.style.fontSize = '12px';
+                    d.style.padding = '2px 0';
+                    d.style.borderBottom = '1px solid #444';
+                    
+                    
+                    let toggleColor = ev.enabled ? '#00e676' : '#666';
+                    let presetText = ev.preset;
+                    if (presetText.startsWith('{')) {
+                        try {
+                            let p = JSON.parse(presetText);
+                            let rgb = p.color;
+                            presetText = `<span style="display:inline-block; width:10px; height:10px; background:rgb(${rgb[0]},${rgb[1]},${rgb[2]}); border-radius:50%; margin-right:5px; vertical-align:middle;"></span> S:${EFFECT_NAMES_PT[p.stick] || p.stick} / B:${EFFECT_NAMES_PT[p.beam] || p.beam}`;
+                        } catch(e) {}
+                    }
+                    // Handle JSON escaping for the update button
+                    let safePreset = ev.preset.replace(/'/g, "\\'");
+                    d.innerHTML = `
+                        <span style="font-family: monospace; color: #fff; width: 70px;">${formatMsToTimecode(ev.time_ms)}</span>
+                        <span style="flex:1; color: #ff9800; font-weight: bold;">${presetText}</span>
+                        <button onclick="sendAction('visko_update_event', {id: ${ev.id}, time_ms: ${ev.time_ms}, preset: '${safePreset}', enabled: ${!ev.enabled}})" style="padding:2px 5px; background:transparent; color:${toggleColor}; flex:0 0 auto;">${ev.enabled ? 'ON' : 'OFF'}</button>
+
+                        <button onclick="sendAction('visko_delete_event', {id: ${ev.id}})" style="padding:2px 5px; background:transparent; color:#f44336; flex:0 0 auto;">X</button>
+                    `;
+                    evList.appendChild(d);
+                });
+            }
+        }
+    }
+    
+    // VISKO TIME LOGIC
+    let isMockSeeking = false;
+    let localViskoPlaying = false;
+    let localViskoPos = 0;
+    let lastViskoUpdate = 0;
+    
+    document.getElementById('mockSeek').addEventListener('mousedown', () => isMockSeeking = true);
+    document.getElementById('mockSeek').addEventListener('mouseup', () => isMockSeeking = false);
+    document.getElementById('mockSeek').addEventListener('input', (e) => {
+        document.getElementById('mockPosition').innerText = formatMsToTimecode(parseInt(e.target.value));
+    });
+    
+    // Animation frame to keep timer ticking smoothly in UI
+    function animationLoop() {
+        if (localViskoPlaying && !isMockSeeking) {
+            let now = performance.now();
+            let elapsed = now - lastViskoUpdate;
+            let pitchMult = 1.0 + (currentState.visko && currentState.visko.pitch ? currentState.visko.pitch : 0);
+            let current = localViskoPos + (elapsed * pitchMult);
+            document.getElementById('mockSeek').value = current;
+            document.getElementById('mockPosition').innerText = formatMsToTimecode(current);
+        }
+        requestAnimationFrame(animationLoop);
+    }
+    requestAnimationFrame(animationLoop);
+
+    function formatMsToTimecode(ms) {
+        ms = Math.max(0, ms);
+        let totalSeconds = Math.floor(ms / 1000);
+        let remainderMs = Math.floor(ms % 1000);
+        let minutes = Math.floor(totalSeconds / 60);
+        let seconds = totalSeconds % 60;
+        return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(remainderMs).padStart(3, '0')}`;
+    }
+    
+    function parseTimecodeToMs(tc) {
+        // Expected MM:SS.mmm or MM:SS
+        if (!tc) return 0;
+        let parts = tc.split(':');
+        if (parts.length !== 2) return 0;
+        let m = parseInt(parts[0]);
+        let secParts = parts[1].split('.');
+        let s = parseInt(secParts[0]);
+        let ms = secParts.length > 1 ? parseInt(secParts[1].padEnd(3, '0').substring(0,3)) : 0;
+        return (m * 60 * 1000) + (s * 1000) + ms;
+    }
+    
+    function addViskoCue() {
+        let tcStr = document.getElementById('newCueTime').value;
+        let preset = document.getElementById('newCuePreset').value;
+        let ms = parseTimecodeToMs(tcStr);
+        if (ms > 0 || tcStr === "00:00.000" || tcStr === "00:00") {
+            sendAction('visko_add_event', {time_ms: ms, preset: preset});
+            document.getElementById('newCueTime').value = '';
+        } else {
+            alert('Formato inválido. Use MM:SS ou MM:SS.mmm');
+        }
+    }
+
+    function prevStickEffect() {
+        let idx = ALL_EFFECTS.indexOf(currentState.stick_effect);
+        if (idx <= 0) idx = ALL_EFFECTS.length - 1; else idx--;
+        sendAction('set_stick_effect', {effect: ALL_EFFECTS[idx]});
+    }
+
+    function nextStickEffect() {
+        let idx = ALL_EFFECTS.indexOf(currentState.stick_effect);
+        if (idx >= ALL_EFFECTS.length - 1) idx = 0; else idx++;
+        sendAction('set_stick_effect', {effect: ALL_EFFECTS[idx]});
+    }
+    
+    function prevBeamEffect() {
+        let idx = ALL_EFFECTS.indexOf(currentState.beam_effect);
+        if (idx <= 0) idx = ALL_EFFECTS.length - 1; else idx--;
+        sendAction('set_beam_effect', {effect: ALL_EFFECTS[idx]});
+    }
+
+    function nextBeamEffect() {
+        let idx = ALL_EFFECTS.indexOf(currentState.beam_effect);
+        if (idx >= ALL_EFFECTS.length - 1) idx = 0; else idx++;
+        sendAction('set_beam_effect', {effect: ALL_EFFECTS[idx]});
+    }
+
+    const canvas = document.getElementById('colorWheel');
+    const ctx = canvas.getContext('2d');
+    const radius = canvas.width / 2;
+    let selectedHue = 0;
+    let selectedSat = 1;
+    let lum = 0.5;
+
+    function drawWheel() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        lum = document.getElementById('lumSlider').value / 100;
+        for (let angle = 0; angle < 360; angle += 1) {
+            let startAngle = (angle - 1) * Math.PI / 180;
+            let endAngle = (angle + 1) * Math.PI / 180;
+            ctx.beginPath();
+            ctx.moveTo(radius, radius);
+            ctx.arc(radius, radius, radius, startAngle, endAngle);
+            ctx.closePath();
+            let grad = ctx.createRadialGradient(radius, radius, 0, radius, radius, radius);
+            grad.addColorStop(0, `hsl(${angle}, 0%, ${lum*100}%)`);
+            grad.addColorStop(1, `hsl(${angle}, 100%, ${lum*100}%)`);
+            ctx.fillStyle = grad;
+            ctx.fill();
+        }
+        
+        let handleAngle = selectedHue * Math.PI / 180;
+        let handleDist = selectedSat * radius;
+        let hX = radius + handleDist * Math.cos(handleAngle);
+        let hY = radius + handleDist * Math.sin(handleAngle);
+        
+        ctx.beginPath();
+        ctx.arc(hX, hY, 12, 0, 2 * Math.PI);
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#ffffff';
+        ctx.stroke();
+        ctx.fillStyle = `rgb(${previewColor[0]}, ${previewColor[1]}, ${previewColor[2]})`;
+        ctx.fill();
+    }
+    
+    document.getElementById('lumSlider').oninput = function() { updateColorFromWheel(); drawWheel(); };
+
+    function updateColorFromWheel() {
+        let h = selectedHue;
+        let s = selectedSat;
+        let l = lum;
+        let c = (1 - Math.abs(2 * l - 1)) * s;
+        let x = c * (1 - Math.abs((h / 60) % 2 - 1));
+        let m = l - c / 2;
+        let r=0, g=0, b=0;
+        if (0 <= h && h < 60) { r = c; g = x; b = 0; }
+        else if (60 <= h && h < 120) { r = x; g = c; b = 0; }
+        else if (120 <= h && h < 180) { r = 0; g = c; b = x; }
+        else if (180 <= h && h < 240) { r = 0; g = x; b = c; }
+        else if (240 <= h && h < 300) { r = x; g = 0; b = c; }
+        else if (300 <= h && h < 360) { r = c; g = 0; b = x; }
+        
+        let R = Math.round((r + m) * 255);
+        let G = Math.round((g + m) * 255);
+        let B = Math.round((b + m) * 255);
+        
+        previewColor = [R, G, B];
+        document.getElementById('previewColorBox').style.backgroundColor = `rgb(${R}, ${G}, ${B})`;
+        document.getElementById('rgbInput').value = `${R}, ${G}, ${B}`;
+    }
+
+    function manualRGBInput() {
+        let val = document.getElementById('rgbInput').value;
+        let parts = val.split(',').map(n => parseInt(n.trim()));
+        if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+            let r = Math.min(255, Math.max(0, parts[0]));
+            let g = Math.min(255, Math.max(0, parts[1]));
+            let b = Math.min(255, Math.max(0, parts[2]));
+            previewColor = [r, g, b];
+            document.getElementById('previewColorBox').style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
+            document.getElementById('rgbInput').value = `${r}, ${g}, ${b}`;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawWheelWithoutHandle(); 
+        }
+    }
+    
+    function drawWheelWithoutHandle() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        lum = document.getElementById('lumSlider').value / 100;
+        for (let angle = 0; angle < 360; angle += 1) {
+            let startAngle = (angle - 1) * Math.PI / 180;
+            let endAngle = (angle + 1) * Math.PI / 180;
+            ctx.beginPath();
+            ctx.moveTo(radius, radius);
+            ctx.arc(radius, radius, radius, startAngle, endAngle);
+            ctx.closePath();
+            let grad = ctx.createRadialGradient(radius, radius, 0, radius, radius, radius);
+            grad.addColorStop(0, `hsl(${angle}, 0%, ${lum*100}%)`);
+            grad.addColorStop(1, `hsl(${angle}, 100%, ${lum*100}%)`);
+            ctx.fillStyle = grad;
+            ctx.fill();
+        }
+    }
+
+    let isDraggingWheel = false;
+
+    canvas.addEventListener('mousedown', (e) => { isDraggingWheel = true; pickColor(e); });
+    canvas.addEventListener('touchstart', (e) => { isDraggingWheel = true; pickColor(e); });
+
+    window.addEventListener('mousemove', (e) => { if (isDraggingWheel) pickColor(e); });
+    window.addEventListener('touchmove', (e) => { if (isDraggingWheel) pickColor(e); }, {passive: false});
+
+    window.addEventListener('mouseup', () => { isDraggingWheel = false; });
+    window.addEventListener('touchend', () => { isDraggingWheel = false; });
+
+    function pickColor(e) {
+        if (e.type.startsWith('touch') && e.cancelable) e.preventDefault();
+        
+        let rect = canvas.getBoundingClientRect();
+        let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        let clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        let x = clientX - rect.left - radius;
+        let y = clientY - rect.top - radius;
+        
+        let dist = Math.sqrt(x*x + y*y);
+        if (dist > radius) dist = radius; 
+        
+        let angle = Math.atan2(y, x) * 180 / Math.PI;
+        if (angle < 0) angle += 360;
+        
+        selectedHue = angle;
+        selectedSat = dist / radius;
+        updateColorFromWheel();
+        drawWheel();
+    }
+
+    updateColorFromWheel();
+    drawWheel();
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
+

@@ -1,0 +1,10 @@
+
+--- ContextMenuUiKt.java (C:\projetos\JBLController\apk_source\sources\androidx\compose\foundation\contextmenu\ContextMenuUiKt.java) ---
+ContextMenuUiKt.java:320: r4 = r1 & 1171(0x493, float:1.641E-42)
+ContextMenuUiKt.java:321: r6 = 1170(0x492, float:1.64E-42)
+
+--- LifecycleEffectKt.java (C:\projetos\JBLController\apk_source\sources\androidx\lifecycle\compose\LifecycleEffectKt.java) ---
+LifecycleEffectKt.java:452: r0 = 1220373486(0x48bd6bee, float:387935.44)
+
+--- o40.java (C:\projetos\JBLController\apk_source\sources\defpackage\o40.java) ---
+o40.java:77: r9 = 300000(0x493e0, double:1.482197E-318)

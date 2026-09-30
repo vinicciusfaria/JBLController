@@ -1,23 +1,45 @@
 # TODO - JBLController
 
-## Protocolo & Engenharia Reversa
+## Protocolo & Engenharia Reversa BLE (CONCLUÍDO ✅)
 - [x] Decodificar estrutura de enquadramento (Framing com `0xAA` + Opcode + Comprimento LE).
-- [x] Mapear arquitetura TLV das notificações.
-- [x] Mapear pacote de estado `0x32` (Modos, RGB, Brilho, Tabela de capacidades, Luz traseira).
-- [x] Mapear pacote de identificação `0x12` (MAC, Serial Number, Firmware, Detecção de som).
-- [ ] Obter log de Bluetooth HCI Snoop via Android + JBL ONE.
-- [ ] Analisar pacotes `ATT Write` no HCI Snoop para determinar Opcode de escrita e checagem de integridade (se houver).
-- [ ] Validar controle bidirecional no JBL PartyLight Stick (escrita -> confirmação por notificação).
-- [ ] Realizar captura de dados do JBL PartyLight Beam e verificar compatibilidade.
+- [x] Mapear arquitetura TLV das notificações e comandos de escrita (`AA 33`, `AA 32`, `AA 13`, `AA 12`).
+- [x] Mapear diferenças de hardware físico e limitações de efeitos entre Stick e Beam.
+- [x] Validar controle bidirecional completo de brilho, velocidade, cores RGB, luz traseira e som.
 
-## Ferramentas & Análise
-- [x] Criar analisador automático de capturas (`tools/ble_capture_analyzer.py`).
-- [ ] Atualizar `tools/ble_capture_analyzer.py` para parsear nativamente os TLVs de `0x32` e `0x12`.
-- [ ] Atualizar `tools/ble_probe.py` para separar notificações por tipo de pacote e evitar sobreposição de `0x32` com `0x12`.
-- [ ] Atualizar `tools/ble_control.py` com as novas hipóteses de framing (`0xAA` + Opcode + TLV).
+## Backend em Python (`src/jbl_controller/`) (CONCLUÍDO ✅)
+- [x] Implementar parser modular e agnóstico do protocolo (`protocol.py`).
+- [x] Implementar cliente BLE assíncrono unificado com Auto-Healing anti-quedas (`partylight.py`).
+- [x] Implementar orquestrador multi-luz com hardware fallbacks (`stage.py`).
+- [x] Implementar máquina de estado com fila de cores circular e macros assíncronas (`controller.py`).
+- [x] Construir servidor WebSockets full-duplex de baixa latência (`web_app.py`).
 
-## Implementação (`src/`)
-- [ ] Criar módulo de pacotes/protocolo (`src/protocol/packet.py` e `src/protocol/tlv.py`).
-- [ ] Implementar cliente de conexão BLE assíncrono para o Stick (`src/device/stick.py`).
-- [ ] Implementar controle de alto nível (set_brightness, set_color, set_mode, set_rear_light).
-- [ ] Desenvolver interface virtual de automação / receptor MIDI.
+## VISKO Light FX & Automação de Timecode (CONCLUÍDO ✅)
+- [x] Persistência SQLite para faixas, aliases e Cues com timestamps em milissegundos (`visko_db.py`).
+- [x] Scheduler de alta precisão (~50 Hz) com compensação de latência (`visko_engine.py`).
+- [x] Retrospectiva inteligente de timecode (Seek / Play / Scrub).
+- [x] Suporte a Backspins e saltos rápidos na linha do tempo (Backspin-proof).
+- [x] Modo Random de cor viva na troca de faixas não mapeadas.
+- [x] Cues personalizados com snapshots de cor e efeitos salvos em formato JSON estruturado.
+
+## Plugin VirtualDJ C++ (`virtualdj_plugin/`) (CONCLUÍDO ✅)
+- [x] Desenvolver plugin DSP nativo em C++ baseado no SDK oficial do VirtualDJ 8.
+- [x] Thread de telemetria assíncrona UDP a 30 FPS sem travar o loop de áudio.
+- [x] Extração de tempo decorrido oficial imune a preferências visuais de interface (`"get_time elapsed"`).
+- [x] Transmissão de BPM, pitch, volume, crossfader e estado de reprodução.
+- [x] Extração e transmissão dos graves dos decks (`deck 1 eq_low` e `deck 2 eq_low`).
+- [x] Lógica de histerese e desempate de Master Deck por equalização de graves no Python (`playback.py`).
+- [x] Script de compilação facilitado em 1 clique (`build.bat`).
+
+## Frontend UI (`static/index.html`) (CONCLUÍDO ✅)
+- [x] Layout estilo mesa de DJ com tema Dark e Color Wheel canvas interativa.
+- [x] Faders de brilho e velocidade em tempo real com broadcast bidirecional.
+- [x] Botões rápidos para cores estáticas (`RED`, `GREEN`, `BLUE`).
+- [x] Painel de criação e listagem formatada de Cues personalizados.
+- [x] Tradução dinâmica de nomes de efeitos de fábrica para Português (`EFFECT_NAMES_PT`).
+- [x] Sincronia de estado do checkbox de modo Random e Seguir Cues com o servidor.
+
+## Inovações Futuras 🚀
+- [ ] **Beat Detection Local / FFT:** Análise em tempo real do stream de áudio do sistema para disparo de efeitos rítmicos sem necessidade de marcação manual prévia.
+- [ ] **Integração MIDI:** Suporte a pads físicos (Launchpad, Akai APC, etc.) usando a biblioteca `mido`.
+- [ ] **Exportação & Importação de Cues:** Salvar e carregar mapas completos de timecode de sets em arquivos JSON portáveis.
+- [ ] **Standalone Packaging:** Empacotar a aplicação em executável único com PyInstaller ou PyWebView.

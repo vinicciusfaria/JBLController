@@ -1,0 +1,55 @@
+
+=== EXPERIMENTO: Experimento 0x32 (Cor Simples) ===
+[2026-09-20 17:15:12.933359] PACOTE: aa 33 06 00 32 03 00 ff 00 | RESULTADO: MUDOU | OBS: ficou 100% verde, um verde bem verde
+[2026-09-20 17:15:23.359103] PACOTE: aa 33 06 00 32 03 ff 00 00 | RESULTADO: MUDOU | OBS: vermelhaço bem vermelho
+[2026-09-20 17:15:37.635121] PACOTE: aa 33 06 00 32 03 00 00 ff | RESULTADO: MUDOU | OBS: azul bem azul
+
+=== EXPERIMENTO: Experimento 0x31 (Modo) ===
+[2026-09-20 17:16:09.285364] PACOTE: aa 33 04 00 31 01 16 | RESULTADO: MUDOU | OBS: ela entrou em algum modo de luz
+[2026-09-20 17:16:20.780481] PACOTE: aa 33 04 00 31 01 17 | RESULTADO: MUDOU | OBS: ela entrou em outro modo de luz
+[2026-09-20 17:16:31.695738] PACOTE: aa 33 04 00 31 01 18 | RESULTADO: MUDOU | OBS: ela mudou o modo de luz
+
+=== EXPERIMENTO: Experimento 0x49 (Som) ===
+[2026-09-20 17:16:47.813735] PACOTE: aa 33 04 00 49 01 00 | RESULTADO: MUDOU | OBS: ela ta reagindo ao som
+[2026-09-20 17:17:00.256619] PACOTE: aa 33 04 00 49 01 01 | RESULTADO: MUDOU | OBS: ela continua reagindo ao som
+
+=== EXPERIMENTO: Experimento 0x48 (Luz Traseira) ===
+[2026-09-20 17:17:13.456100] PACOTE: aa 33 04 00 48 01 00 | RESULTADO: MUDOU | OBS: 
+[2026-09-20 17:17:17.881739] PACOTE: aa 33 04 00 48 01 01 | RESULTADO: MUDOU | OBS: 
+
+=== EXPERIMENTO: Experimento 0x48 (Luz Traseira) ===
+[2026-09-20 17:17:49.529409] PACOTE: aa 33 04 00 48 01 00 | RESULTADO: IGNORAR | OBS: 
+[2026-09-20 17:17:59.001008] PACOTE: aa 33 04 00 48 01 01 | RESULTADO: IGNORAR | OBS: 
+
+=== EXPERIMENTO: Experimento 0x32 (Cor Simples) ===
+[2026-09-20 17:18:21.912673] PACOTE: aa 33 06 00 32 03 00 ff 00 | RESULTADO: MUDOU | OBS: 
+[2026-09-20 17:18:26.840694] PACOTE: aa 33 06 00 32 03 ff 00 00 | RESULTADO: IGNORAR | OBS: 3
+[2026-09-20 17:18:28.685866] PACOTE: aa 33 06 00 32 03 00 00 ff | RESULTADO: IGNORAR | OBS: 3
+
+=== EXPERIMENTO: Experimento 0x31 (Modo) ===
+[2026-09-20 17:18:35.908858] PACOTE: aa 33 04 00 31 01 16 | RESULTADO: IGNORAR | OBS: 
+[2026-09-20 17:18:40.897190] PACOTE: aa 33 04 00 31 01 17 | RESULTADO: IGNORAR | OBS: 3
+[2026-09-20 17:18:44.388354] PACOTE: aa 33 04 00 31 01 18 | RESULTADO: IGNORAR | OBS: 3
+
+=== EXPERIMENTO: Experimento 0x46 (Velocidade?) ===
+[2026-09-20 17:19:02.807210] PACOTE: aa 33 04 00 46 01 00 | RESULTADO: MUDOU | OBS: lento pra caralho
+[2026-09-20 17:19:12.421891] PACOTE: aa 33 04 00 46 01 20 | RESULTADO: MUDOU | OBS: parece ter acelerado
+[2026-09-20 17:19:18.070884] PACOTE: aa 33 04 00 46 01 40 | RESULTADO: MUDOU | OBS: ta acelerando
+[2026-09-20 17:19:25.322942] PACOTE: aa 33 04 00 46 01 60 | RESULTADO: MUDOU | OBS: ta rapido pra caralho
+[2026-09-20 17:19:31.646344] PACOTE: aa 33 04 00 46 01 64 | RESULTADO: MUDOU | OBS: mais rapido ainda
+
+=== EXPERIMENTO: Experimento 0x47 (Desconhecido) ===
+[2026-09-20 17:19:46.992283] PACOTE: aa 33 05 00 47 02 00 00 | RESULTADO: MUDOU | OBS: nao entendi o que mudou
+[2026-09-20 17:20:02.948453] PACOTE: aa 33 05 00 47 02 01 00 | RESULTADO: MUDOU | OBS: nao sei dizer o que mudou
+[2026-09-20 17:20:15.389755] PACOTE: aa 33 05 00 47 02 00 01 | RESULTADO: MUDOU | OBS: ele parece que mudou, mas realmente nao sei dizer
+[2026-09-20 17:20:27.351882] PACOTE: aa 33 05 00 47 02 01 01 | RESULTADO: IGNORAR | OBS: 
+
+=== EXPERIMENTO: Experimento 0x36 (Desconhecido) ===
+[2026-09-20 17:20:52.170006] PACOTE: aa 33 04 00 36 01 00 | RESULTADO: MUDOU | OBS: mudou pra uma luz mais clara que fica trocando aos poucos
+[2026-09-20 17:21:17.798204] PACOTE: aa 33 04 00 36 01 01 | RESULTADO: NAO_MUDOU | OBS: parecido, mas ainda durante o enter parece que algo aconteceu
+[2026-09-20 17:21:28.322535] PACOTE: aa 33 04 00 36 01 40 | RESULTADO: MUDOU | OBS: nao sei dizer
+[2026-09-20 17:21:43.660187] PACOTE: aa 33 04 00 36 01 64 | RESULTADO: MUDOU | OBS: as cores tao ficando mais fortes, o modo permanece o mesmo
+
+=== EXPERIMENTO: Experimento 0x48 (Luz Traseira) ===
+[2026-09-20 17:22:24.640476] PACOTE: aa 33 04 00 48 01 00 | RESULTADO: NAO_MUDOU | OBS: nao parece mudar
+[2026-09-20 17:22:29.661424] PACOTE: aa 33 04 00 48 01 01 | RESULTADO: NAO_MUDOU | OBS: 
