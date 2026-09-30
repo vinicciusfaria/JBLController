@@ -1,6 +1,6 @@
-# JBLController (Virtual DJ Desk & Timecode Engine)
+# JBLController
 
-Um projeto em Python e C++ que faz engenharia reversa do protocolo Bluetooth Low Energy (BLE) dos dispositivos **JBL PartyLight Stick** e **JBL PartyLight Beam**, transformando-os em uma **Mesa de Iluminação de DJ Profissional** com automação de timecode em tempo real para **VirtualDJ**.
+Jbl Controller é um projeto desenvolvido em Python e C++ que tem o objetivo de tornar o uso das Jbl Partylights algo profissional para a comunidade de DJs. A ideia do software surgiu devido as limitações do JBL One, que não permite o controle simultâneo de Sticks e Beams sem uma caixa Jbl com Auracast, além do mesmo ser de uso exclusivo para celualres. O programa faz engenharia reversa do protocolo Bluetooth Low Energy (BLE) dos dispositivos **JBL PartyLight Stick** e **JBL PartyLight Beam**, permitindo um maior controle sobre a iluminação, além de contar com automação de timecode em tempo real sincronizado com o **VirtualDJ**.
 
 ---
 
