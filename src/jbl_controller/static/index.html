@@ -420,7 +420,10 @@
                 document.getElementById('mockSeek').max = currentState.visko.length_ms || 300000;
                 document.getElementById('mockPosition').innerText = formatMsToTimecode(currentState.visko.position);
                 if (document.getElementById('mockLength')) document.getElementById('mockLength').innerText = formatMsToTimecode(currentState.visko.length_ms || 0);
-                if (document.getElementById('mockBpm')) document.getElementById('mockBpm').innerText = (currentState.visko.bpm || 0).toFixed(1);
+                
+                let pitchMult = 1.0 + (currentState.visko.pitch ? (currentState.visko.pitch / 100.0) : 0);
+                let currentBpm = (currentState.visko.bpm || 0) * pitchMult;
+                if (document.getElementById('mockBpm')) document.getElementById('mockBpm').innerText = Math.round(currentBpm);
             }
             
             // Sync local state for loop
@@ -485,7 +488,7 @@
         if (localViskoPlaying && !isMockSeeking) {
             let now = performance.now();
             let elapsed = now - lastViskoUpdate;
-            let pitchMult = 1.0 + (currentState.visko && currentState.visko.pitch ? currentState.visko.pitch : 0);
+            let pitchMult = 1.0 + (currentState.visko && currentState.visko.pitch ? (currentState.visko.pitch / 100.0) : 0);
             let current = localViskoPos + (elapsed * pitchMult);
             document.getElementById('mockSeek').value = current;
             document.getElementById('mockPosition').innerText = formatMsToTimecode(current);

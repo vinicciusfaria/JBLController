@@ -39,6 +39,7 @@ class VirtualDJSource(PlaybackSource):
         # Internal timer for Mock behavior (when VDJ is offline)
         self._last_play_time = 0
         self._last_udp_update = 0
+        self._last_sync_time = 0
         
         self.transport = None
         
@@ -141,7 +142,11 @@ class VirtualDJSource(PlaybackSource):
                 
         self._last_udp_update = time.time()
         
+        if time.time() - getattr(self, "_last_sync_time", 0) > 1.0:
+            needs_sync = True
+            
         if needs_sync and self.on_sync_callback:
+            self._last_sync_time = time.time()
             asyncio.create_task(self.on_sync_callback())
 
     # --- Mock Overrides (Called by UI) ---
@@ -160,7 +165,8 @@ class VirtualDJSource(PlaybackSource):
         is_vdj_live = (time.time() - self._last_udp_update) < 1.5
         
         if self._playing and not is_vdj_live:
-            return self._position + int((time.time() - self._last_play_time) * 1000)
+            pitch_mult = 1.0 + (self.pitch / 100.0)
+            return self._position + int((time.time() - self._last_play_time) * 1000 * pitch_mult)
         return self._position
         
     @position.setter
@@ -181,7 +187,8 @@ class VirtualDJSource(PlaybackSource):
             # We are pausing via mock, calculate final position
             is_vdj_live = (time.time() - self._last_udp_update) < 1.5
             if not is_vdj_live:
-                self._position += int((time.time() - self._last_play_time) * 1000)
+                pitch_mult = 1.0 + (self.pitch / 100.0)
+                self._position += int((time.time() - self._last_play_time) * 1000 * pitch_mult)
         self._playing = is_playing
 
     # --- PlaybackSource Interface ---

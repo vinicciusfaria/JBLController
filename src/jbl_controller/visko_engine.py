@@ -21,6 +21,7 @@ class ViskoEngine:
         self.was_playing = False
         self._running = False
         self._task = None
+        self.last_triggered_event_id = None
 
     def start(self):
         if not self._running:
@@ -70,6 +71,7 @@ class ViskoEngine:
                         self.events = []
                     self.last_position = position
                     self.was_playing = is_playing
+                    self.last_triggered_event_id = None
                     
                     if is_playing and self.follow_cues and self.events:
                         self._sync_to_current_position(position)
@@ -89,6 +91,7 @@ class ViskoEngine:
                         trigger_time = ev["time_ms"] - self.latency_compensation_ms
                         if self.last_position <= trigger_time <= position:
                             preset = ev["preset"]
+                            self.last_triggered_event_id = ev["id"]
                             asyncio.create_task(self._trigger_preset(preset))
                             
                 self.last_position = position
@@ -113,8 +116,10 @@ class ViskoEngine:
                     best_event = ev
                     
         if best_event:
-            logging.debug(f"[VISKO FX] Sincronizando com tempo atual (Seek/Play): {best_event['preset']}")
-            asyncio.create_task(self._trigger_preset(best_event["preset"]))
+            if best_event["id"] != self.last_triggered_event_id:
+                logging.debug(f"[VISKO FX] Sincronizando com tempo atual (Seek/Play): {best_event['preset']}")
+                self.last_triggered_event_id = best_event["id"]
+                asyncio.create_task(self._trigger_preset(best_event["preset"]))
 
     async def _trigger_preset(self, preset: str):
         logging.debug(f"[VISKO FX] Triggering '{preset}'!")
