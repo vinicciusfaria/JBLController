@@ -271,6 +271,31 @@ class ControllerState:
         await self.set_stick_effect(self.stick_effect)
         await self.set_beam_effect(self.beam_effect)
 
+    async def rescan_devices(self):
+        from bleak import BleakScanner
+        from jbl_controller.partylight import PartyLight
+        
+        print("[RESCAN] Procurando novas PartyLights...")
+        devices = await BleakScanner.discover(timeout=5.0)
+        
+        current_addresses = {d.address for d in self.stage.devices}
+        new_devices = []
+        
+        for d in devices:
+            if d.name and "PartyLight" in d.name and d.address not in current_addresses:
+                print(f"[RESCAN] Nova caixa encontrada: {d.name} ({d.address})")
+                new_light = PartyLight(d.address, name=d.name)
+                new_light.on_state_change = self._device_state_changed
+                new_devices.append(new_light)
+                
+        if new_devices:
+            self.stage.devices.extend(new_devices)
+            for new_light in new_devices:
+                asyncio.create_task(new_light.connect())
+                
+        if self.on_update_callback:
+            await self.on_update_callback()
+
     def get_state_dict(self):
         devices_status = []
         for d in self.stage.devices:

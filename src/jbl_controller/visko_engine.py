@@ -66,6 +66,10 @@ class ViskoEngine:
                             c = random.choice(vibrant_colors)
                             asyncio.create_task(self.controller.set_color(c[0], c[1], c[2]))
                             
+                            beam_effects = ["BOUNCE", "LOOP", "NEON", "TRIM", "SWITCH"]
+                            eff = random.choice(beam_effects)
+                            asyncio.create_task(self.controller.set_beam_effect(eff))
+                            
                     else:
                         self.current_track_id = -1
                         self.events = []

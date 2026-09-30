@@ -159,6 +159,9 @@
     <div class="status-item">Beam: <span class="status-value" id="beamEffect">--</span></div>
     <div class="status-item">Sticks: <span class="status-value" id="stickEffect">--</span></div>
     <div class="device-list" id="deviceList"></div>
+    <div style="margin-top: 10px;">
+        <button onclick="sendAction('rescan_devices')" style="padding: 5px; font-size: 10px; width: auto; background-color: #2196f3;">🔄 PROCURAR NOVAS LUZES</button>
+    </div>
 </div>
 
 <div class="panel color-section">
@@ -345,7 +348,8 @@
     
     let currentState = {};
     let previewColor = [255, 0, 0];
-    const ALL_EFFECTS = ["OFF", "ROCK", "NEON", "CLUB", "FLOW", "RIPPLE", "CROSS", "FLASH", "RANDOM", "LOOP", "BOUNCE", "TRIM", "SWITCH", "FREEZE", "OCEAN", "AURORA", "BLOSSOM", "SUNRISE", "FIREPLACE", "STATIC", "GRAVITY", "LIGHTNING", "GLITCH", "CAMPFIRE", "UNIVERSE", "FIREFLY", "BEER", "STORM", "HOVER", "SKY"];
+    const BEAM_EFFECTS = ["OFF", "BOUNCE", "LOOP", "NEON", "TRIM", "SWITCH", "FREEZE"];
+    const STICK_EFFECTS = ["OFF", "STORM", "HOVER", "SKY", "BEER", "BLOSSOM", "AURORA", "OCEAN", "FIREFLY", "UNIVERSE", "CAMPFIRE", "FREEZE", "SWITCH", "TRIM", "BOUNCE", "LOOP", "NEON", "LIGHTNING", "GRAVITY", "GLITCH"];
     
     const EFFECT_NAMES_PT = {
         "OFF": "DESLIGADO", "ROCK": "ROCK", "NEON": "NEON", "CLUB": "CLUB", "FLOW": "FLUXO",
@@ -531,27 +535,27 @@
     }
 
     function prevStickEffect() {
-        let idx = ALL_EFFECTS.indexOf(currentState.stick_effect);
-        if (idx <= 0) idx = ALL_EFFECTS.length - 1; else idx--;
-        sendAction('set_stick_effect', {effect: ALL_EFFECTS[idx]});
+        let idx = STICK_EFFECTS.indexOf(currentState.stick_effect);
+        if (idx <= 0) idx = STICK_EFFECTS.length - 1; else idx--;
+        sendAction('set_stick_effect', {effect: STICK_EFFECTS[idx]});
     }
 
     function nextStickEffect() {
-        let idx = ALL_EFFECTS.indexOf(currentState.stick_effect);
-        if (idx >= ALL_EFFECTS.length - 1) idx = 0; else idx++;
-        sendAction('set_stick_effect', {effect: ALL_EFFECTS[idx]});
+        let idx = STICK_EFFECTS.indexOf(currentState.stick_effect);
+        if (idx >= STICK_EFFECTS.length - 1) idx = 0; else idx++;
+        sendAction('set_stick_effect', {effect: STICK_EFFECTS[idx]});
     }
     
     function prevBeamEffect() {
-        let idx = ALL_EFFECTS.indexOf(currentState.beam_effect);
-        if (idx <= 0) idx = ALL_EFFECTS.length - 1; else idx--;
-        sendAction('set_beam_effect', {effect: ALL_EFFECTS[idx]});
+        let idx = BEAM_EFFECTS.indexOf(currentState.beam_effect);
+        if (idx <= 0) idx = BEAM_EFFECTS.length - 1; else idx--;
+        sendAction('set_beam_effect', {effect: BEAM_EFFECTS[idx]});
     }
 
     function nextBeamEffect() {
-        let idx = ALL_EFFECTS.indexOf(currentState.beam_effect);
-        if (idx >= ALL_EFFECTS.length - 1) idx = 0; else idx++;
-        sendAction('set_beam_effect', {effect: ALL_EFFECTS[idx]});
+        let idx = BEAM_EFFECTS.indexOf(currentState.beam_effect);
+        if (idx >= BEAM_EFFECTS.length - 1) idx = 0; else idx++;
+        sendAction('set_beam_effect', {effect: BEAM_EFFECTS[idx]});
     }
 
     const canvas = document.getElementById('colorWheel');

@@ -137,6 +137,8 @@ class WebApp:
                             await self.controller.toggle_backlight()
                         elif cmd == "sound_reactive":
                             await self.controller.toggle_sound_reactive()
+                        elif cmd == "rescan_devices":
+                            asyncio.create_task(self.controller.rescan_devices())
                             
                         # VISKO Commands
                         elif cmd == "visko_set_follow":
