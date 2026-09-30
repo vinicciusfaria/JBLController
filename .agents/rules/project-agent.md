@@ -1,30 +1,20 @@
 ---
-description: "Regras de Colaboração e Investigação BLE para o JBLController"
+description: "Regras de Colaboração e Desenvolvimento para o JBLController"
 ---
 
 # Estrutura de Colaboração do Projeto
 
-- **Gemini**: Agente executor/desenvolvedor. Responsável por implementar, refatorar, criar testes e manter a documentação.
-- **ChatGPT**: Technical Lead/revisor/arquiteto. Analisa evidências, revisa hipóteses/código e orienta o desenvolvimento.
-- **Usuário**: Operador do hardware, responsável pela execução de testes físicos e extração de logs (como HCI Snoop).
+- **Usuário (Líder do Projeto e Desenvolvedor Principal):** Autor e idealizador do projeto. Define os requisitos de produto e arquitetura, concebe novas funcionalidades, revisa todo o código, lidera a depuração de problemas e valida a operação física das luminárias e da integração com o VirtualDJ.
+- **Gemini:** Assistente técnico de desenvolvimento (pair programming). Responsável por implementar código, refatorar, escrever testes automatizados e manter a documentação sob a direção do Usuário.
+- **ChatGPT:** Revisor consultivo secundário. Consultado pontualmente para segundas opiniões sobre hipóteses e análise de dados.
 
-# Regras de Desenvolvimento e Investigação BLE
+---
 
-1. **Nunca tratar hipótese como fato.** (Exigir sempre confirmação experimental).
-2. **Nunca enviar comandos BLE arbitrários** para os dispositivos físicos.
-3. **Não assumir** que o framing (estrutura de pacotes) de um Write Request/Command seja igual ao framing das notificações recebidas.
-4. Sempre consultar as documentações de protocolo (`docs/protocol/*.md` e `PROTOCOL.md`) antes de propor ou implementar mudanças no controle BLE.
-5. Sempre registrar novas descobertas e avanços nos arquivos Markdown correspondentes na pasta `docs/protocol/`.
-6. Quando faltar evidência para progredir em uma implementação, **PARE**, não deduza informações e explique ao usuário exatamente qual experimento é necessário realizar.
+# Regras de Desenvolvimento
 
-# Próximos Passos Imediatos (Contexto)
-
-O próximo objetivo técnico **NÃO é** criar mais comandos BLE, mas analisar o Android HCI Snoop/bugreport em busca de:
-- ATT Write real enviado pelo JBL ONE;
-- UUID da characteristic utilizada;
-- Se foi Write Request ou Write Command;
-- Payload hexadecimal completo;
-- Quais bytes mudam quando SOMENTE o brilho é alterado;
-- Comparação entre o Write real e o estado 0x45 observado.
-Não invente ou deduza esses dados.
-
+1. **Distinção estrita:** Nunca tratar hipótese como fato comprovado.
+2. **Segurança de hardware:** Nunca enviar pacotes arbitrários ou comandos de atualização de firmware (DFU / `0x25` a `0x2A`).
+3. **Consultas prévias:** Sempre consultar `PROTOCOL.md` e `PROJECT_STATE.md` antes de propor ou implementar mudanças nos módulos de comunicação BLE.
+4. **Registro de descobertas:** Atualizar `PROTOCOL.md` e os arquivos em `docs/protocol/` sempre que um novo comportamento for confirmado.
+5. **Verificação contínua:** Executar a suíte de testes unitários antes de concluir qualquer alteração no código.
+6. **Critério de parada por incerteza:** Quando faltarem evidências para definir um comportamento do protocolo, parar a implementação e descrever o experimento necessário para coletar dados.

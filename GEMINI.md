@@ -1,122 +1,52 @@
-# JBL Controller Agent
+# Diretrizes de Desenvolvimento (Gemini)
 
 ## Papel
 
-Você é o agente principal de desenvolvimento do projeto JBL Controller.
+Agente de assistência de desenvolvimento (pair programming) do projeto JBLController, trabalhando sob a direção do Usuário (líder do projeto e desenvolvedor principal).
 
-Objetivo: descobrir, documentar e implementar o protocolo de comunicação BLE dos JBL PartyLight Stick e JBL PartyLight Beam, criando um controlador virtual que possa futuramente receber automação de áudio/MIDI.
+---
 
-## Regras de trabalho
+## Papéis da Equipe
 
-1. Antes de alterar código, leia:
-   - README.md
-   - PROJECT_STATE.md
-   - TODO.md
-   - captures/ quando a tarefa envolver protocolo BLE.
-2. Use as capturas reais como fonte primária para hipóteses sobre o protocolo.
-3. Não invente campos, UUIDs, handles ou comandos.
-4. Não envie pacotes BLE arbitrários ao hardware.
-5. Para testes ativos, prefira comandos derivados de uma captura real e faça uma hipótese explícita antes do teste.
-6. Separe:
-   - OBSERVADO: aparece diretamente na captura;
-   - HIPÓTESE: interpretação ainda não confirmada;
-   - CONFIRMADO: comportamento reproduzido com teste controlado.
-7. Toda descoberta relevante deve ser registrada em documentação/protocolo.
-8. Não sobrescreva capturas originais.
-9. Ao criar código, mantenha-o simples e modular.
-10. Rode os testes disponíveis antes de considerar uma mudança concluída.
-11. Não remova funcionalidades existentes sem explicar o motivo.
-12. Se uma captura não for suficiente para concluir algo, diga exatamente qual experimento falta.
+- **Usuário (Líder do Projeto e Desenvolvedor Principal):** Idealizador do projeto. Define os requisitos de produto e arquitetura, concebe e especifica novas funcionalidades, revisa todo o código gerado, orienta o diagnóstico e depuração de problemas no software e na integração com o VirtualDJ, além de executar e validar os testes com o hardware físico.
+- **Gemini:** Assistente técnico de desenvolvimento. Responsável por implementar código em Python e C++, refatorar, escrever testes automatizados e manter a documentação técnica sob a orientação do Usuário.
+- **ChatGPT:** Revisor secundário. Utilizado pontualmente para revisão de hipóteses específicas, análise cruzada de evidências e consultas técnicas consultivas.
 
-## Ferramentas importantes
+---
 
-- tools/ble_scan.py: descoberta de dispositivos BLE.
-- tools/ble_inspect.py: inspeção GATT.
-- tools/ble_probe.py: captura de notificações BLE com anotações do usuário.
-- tools/ble_control.py: testes ativos de controle. Use com cautela.
-- tools/ble_capture_analyzer.py: análise automática das capturas.
+## Regras Obrigatórias
 
-## Análise de capturas
+1. **Evidência empírica antes de código:**
+   - Não deduza opcodes, handles, UUIDs ou formatos de pacote sem validação em capturas reais ou código-fonte descompilado.
+   - Antes de modificar módulos de comunicação BLE, consulte `PROTOCOL.md` e `PROJECT_STATE.md`.
+2. **Classificação rigorosa de dados:**
+   - **OBSERVADO:** dado que aparece diretamente em capturas ou no código descompilado do app.
+   - **HIPÓTESE:** interpretação lógica que ainda não foi comprovada experimentalmente.
+   - **CONFIRMADO:** comportamento reproduzido fisicamente em hardware em teste controlado.
+3. **Segurança de hardware:**
+   - Nunca envie pacotes aleatórios ou comandos brutos (raw) diretamente ao hardware sem framing completo (`0xAA ...`).
+   - Não execute nem teste comandos identificados como DFU / atualização de firmware (`0x25` a `0x2A`).
+4. **Integridade de capturas:**
+   - Nunca sobrescreva arquivos existentes na pasta `captures/`. Novos testes devem gerar arquivos datados.
+5. **Verificação por testes:**
+   - Sempre execute a suíte de testes unitários antes de considerar qualquer modificação concluída:
+     ```powershell
+     $env:PYTHONPATH="src"; python -m unittest discover tests
+     ```
+   - Ao alterar comportamentos do scheduler, master deck ou parsing UDP, atualize ou adicione testes correspondentes em `tests/`.
+6. **Critério de parada por dúvida:**
+   - Se faltarem dados para validar uma implementação BLE, pare o desenvolvimento desse ponto, documente a lacuna e descreva o experimento exato necessário para tirar a dúvida.
 
-Ao analisar uma captura:
+---
 
-1. Extraia os pacotes.
-2. Separe tipos de pacote.
-3. Para estados `aa 32`, compare estados consecutivos.
-4. Ignore `aa 12` nas comparações de estado, salvo quando a tarefa for especificamente investigar esse pacote.
-5. Relacione mudanças temporais às anotações do usuário.
-6. Liste os bytes/offsets que mudaram.
-7. Gere hipóteses somente quando houver evidência.
-8. Procure a mesma alteração em outras capturas.
-9. Classifique a confiança como baixa, média ou alta.
-10. Sugira o próximo experimento controlado.
+## Referência Rápida do Protocolo
 
-## Campos já investigados
-
-Esses campos são hipóteses/descobertas atuais e não devem ser tratados como protocolo completo:
-
-- `45 01 XX` → brilho. Confirmado em teste controlado:
-  - `00` ≈ 0%
-  - `40` ≈ 50%
-  - `64` = 100%
-- `32 03 RR GG BB` → relacionado à cor/modo.
-- `48 01 00/01` → luz traseira desligada/ligada.
-- `49 01 00/01` → detecção de som desligada/ligada.
-- `46 01 XX` → ainda desconhecido.
-- `47 02 00` → ainda desconhecido.
-- bloco `4a 14 ...` → ainda desconhecido.
-- `17` e `16` foram associados a modos pelo usuário, mas precisam de mais validação.
-
-Importante: `45 01 XX` foi observado como parte de um pacote de estado. Um teste anterior mostrou que enviar apenas `45 01 XX` não controlou o Stick. Portanto, não trate esse trecho isolado como comando completo.
-
-## Hardware
-
-Dispositivos-alvo:
-- JBL PartyLight Stick
-- JBL PartyLight Beam
-
-UUID de escrita conhecido:
-`65786365-6c70-6f69-6e74-2e636f6d0002`
-
-UUID de notificação conhecido:
-`65786365-6c70-6f69-6e74-2e636f6d0001`
-
-Também existe:
-- `0000fea1-0000-1000-8000-00805f9b34fb` para escrita
-- `0000fea2-0000-1000-8000-00805f9b34fb` para notificações
-
-Não assuma que esses UUIDs, handles ou endereços MAC identificam permanentemente um dispositivo.
-
-## Fluxo ideal de engenharia reversa
-
-Captura
-→ análise automática
-→ hipótese
-→ experimento controlado
-→ captura do resultado
-→ confirmação/refutação
-→ documentação
-→ implementação
-
-## Colaboração
-
-Gemini é o principal agente de implementação:
-- escrever código;
-- refatorar;
-- criar testes;
-- analisar arquivos;
-- manter documentação;
-- preparar commits.
-
-ChatGPT atua como revisor/arquiteto:
-- analisar hipóteses;
-- revisar descobertas;
-- propor experimentos;
-- revisar código e arquitetura.
-
-O usuário opera fisicamente os PartyLights e fornece as ações realizadas.
-
-## Regra de segurança do agente
-
-Se houver dúvida entre dois comandos possíveis, NÃO escolha aleatoriamente.
-Pare, explique a incerteza e proponha um experimento de captura que diferencie as hipóteses.
+- **Framing GATT:** `[AA] [Command ID] [Payload Length] [00] [Field ID] [Field Len] [Value...]`
+- **UUID de escrita:** `65786365-6c70-6f69-6e74-2e636f6d0002` (Write Without Response / Opcode ATT `0x52`)
+- **UUID de notificação:** `65786365-6c70-6f69-6e74-2e636f6d0001` (Notify)
+- **Command IDs:**
+  - `0x33`: Envio de parâmetros visuais (brilho `0x45`, cor `0x32`, modo `0x31`, velocidade `0x46`, luz traseira `0x49`).
+  - `0x13`: Envio de configurações de hardware (detecção de som `0x45`).
+  - `0x31` / `0x11`: Polling para forçar notificações `0x32` e `0x12`.
+  - `0x32`: Notificação de estado da luz e lista de modos suportados (`0x4A`).
+  - `0x12`: Notificação de metadados do hardware (MAC `0x37`, Serial `0x40`, Firmware `0x41`).

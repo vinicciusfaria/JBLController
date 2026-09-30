@@ -1,176 +1,112 @@
-# Especificação do Protocolo JBL PartyLight BLE
+# Especificação Técnica do Protocolo BLE - JBL PartyLight
 
-> **Status:** 100% Confirmado e validado fisicamente.
-> Esta especificação reflete a arquitetura do firmware contido nas JBL PartyLights Stick e Beam, descoberta através de captura passiva (HCI Snoop) no Android e reproduzida ativamente na biblioteca Python nativa deste repositório (`jbl_controller`).
-
----
-
-## 1. TRANSPORTE BLE
-
-- **Serviço Principal:** `0000fea0-0000-1000-8000-00805f9b34fb` (ou desconhecidos baseados no mapeamento UUID/Handle).
-- **UUID de Escrita (Command):** `65786365-6c70-6f69-6e74-2e636f6d0002`
-- **UUID de Notificação (Status):** `65786365-6c70-6f69-6e74-2e636f6d0001`
-- **Propriedades GATT:** 
-  - Escrita: `Write Without Response` (GATT Write Command - Opcode ATT `0x52`).
-  - Leitura: `Notify` para receber as respostas da caixa.
-- **Handles Observados:** 
-  - `0x0080` / `0x8003` para comandos (depende da controladora Bluetooth host).
-  - `0x8006` / `32772` para notify.
-- **Diferença (Comando x Notificação):** O app envia configurações através do UUID de Escrita usando pacotes do tipo `Command` (sem exigir ACK). A caixa responde ativamente ou notifica mudanças manuais através do UUID de Notificação enviando de volta as propriedades totais do dispositivo.
+Especificação consolidada da camada de transporte e enquadramento de dados dos dispositivos JBL PartyLight Stick e JBL PartyLight Beam, derivada de capturas de tráfego BLE, descompilação de código do aplicativo JBL One e testes físicos controlados.
 
 ---
 
-## 2. FRAMING
+## 1. Transporte BLE
 
-Todo envio ou recebimento usa este formato de encapsulamento contíguo:
-
-`[AA] [Command ID] [Payload Length] | [00] [Field 1 ID] [Field 1 Len] [Field 1 Value] [Field N...]`
-
-- **`AA` (1 byte):** Identifier universal fixo.
-- **`Command ID` (1 byte):** Define o contexto dos campos seguintes (ex: Luz ou Hardware).
-- **`Payload Length` (1 byte):** Define o tamanho em bytes do array a partir do próximo byte.
-- **`00` (1 byte fixo):** Byte obrigatório que marca o início do payload de dados. 
-- **`Field ID` (1 byte):** O código da propriedade que está sendo alterada.
-- **`Field Length` (1 byte):** Quantos bytes o valor desta propriedade ocupa.
-- **`Field Value` (N bytes):** O valor em si.
-
-**Como o Payload Length é calculado:**
-`Payload Length = 1 (para o byte 00) + (1 para Field ID + 1 para Field Len + N para Field Value)`
-O protocolo suporta **encadeamento**. Você pode enviar múltiplos Fields em sequência no mesmo payload. O `Payload Length` será a soma de todos os blocos mais o `00` inicial.
+- **Serviço Principal:** `65786365-6c70-6f69-6e74-2e636f6d0000`
+- **Característica de Escrita (Comandos):** `65786365-6c70-6f69-6e74-2e636f6d0002`
+  - Tipo de escrita: `Write Without Response` (GATT Write Command, Opcode ATT `0x52`).
+  - Handles observados: `0x0080` / `0x8003`.
+- **Característica de Notificação (Estado):** `65786365-6c70-6f69-6e74-2e636f6d0001`
+  - Tipo de leitura: `Notify` (com subscrição no descritor CCCD).
+  - Handles observados: `0x8006`.
+- **Fluxo de comunicação:**
+  - O controlador envia configurações visuais ou de hardware na característica de escrita via comandos sem resposta.
+  - A luminária emite notificações periódicas ou em resposta a comandos na característica de notificação, informando o estado completo dos parâmetros.
 
 ---
 
-## 3. COMMAND IDs
+## 2. Estrutura de Enquadramento (Framing)
 
-O Command ID define o contexto do pacote. Os Fields IDs (`0x45`, `0x46`, etc) mudam de significado de acordo com qual Command ID os encapsulou.
+Todos os pacotes trafegam como uma sequência contígua de bytes:
 
-| Header | Classe Java | Função | Ação/Status | Evidência |
-|---|---|---|---|---|
-| **`AA 33`** | `ReqSetLightInfo` | Controle de Iluminação. | Comando enviado. | CONFIRMADO EM AMBOS |
-| **`AA 13`** | `ReqSetDevInfo` | Controle de Hardware/Som. | Comando enviado. | CONFIRMADO PELO APK |
-| **`AA 31`** | `ReqLightInfo` | Polling. Envia `AA 31 00`. Força a resposta do `AA 32`. | Comando enviado. | CONFIRMADO EM AMBOS |
-| **`AA 11`** | `ReqDevInfo` | Polling. Envia `AA 11 00`. Força a resposta do `AA 12`. | Comando enviado. | CONFIRMADO PELO APK |
-| **`AA 32`** | `PLLightInfo` | Status de Iluminação atualizado. | Notificação recebida. | CONFIRMADO EM AMBOS |
-| **`AA 12`** | *(Status de Dev)* | Status de Hardware/Configuração. | Notificação recebida. | CONFIRMADO PELO HCI |
-| **`AA 9D`** | `ReqBatteryStatus` | Pede status da bateria da Beam. | Comando enviado. | CONFIRMADO PELO APK |
-| **`AA 9E`** | *(BatteryInfo)* | Nível de bateria. | Notificação recebida. | CONFIRMADO PELO APK |
+```text
+[AA] [Command ID] [Payload Length] [00] [Field 1 ID] [Field 1 Len] [Field 1 Value...] [Field N...]
+```
 
----
+- **`0xAA` (1 byte):** Byte de sincronização inicial.
+- **`Command ID` (1 byte):** Contexto dos dados enviados ou recebidos.
+- **`Payload Length` (1 byte):** Quantidade total de bytes a partir do byte seguinte. Calculado como:
+  `Payload Length = 1 (marcador 0x00) + somatório(2 + tamanho_do_valor_do_campo)`
+- **`0x00` (1 byte):** Marcador fixo que precede os campos de dados.
+- **Campos TLV:** Sequência contendo `Field ID` (1 byte), `Field Length` (1 byte) e `Field Value` (N bytes).
 
-## 4. AA 33 / ILUMINAÇÃO
-
-Tabela de comandos visuais que trafegam dentro de blocos empacotados por `AA 33` (Envio) e `AA 32` (Status):
-
-| Field ID | Nome Interno | Tamanho | Valores | Stick | Beam | Evidência Final |
-|---|---|---|---|---|---|---|
-| **`0x31`** | `Pattern` | 1 byte | `0x00` a `0x22` (ver aba PATTERNS). | Suportado | Suportado (Subconjunto) | CONFIRMADO EM AMBOS |
-| **`0x32`** | `Color` | 3 bytes | `R G B` (Ex: `FF 00 00`). | Suportado | Suportado | CONFIRMADO EM AMBOS |
-| **`0x36`** | `PatternLooping`| 1 byte | `00`=Loop, `01`=Static. | Suportado | Não suportado | CONFIRMADO EM AMBOS |
-| **`0x45`** | `Brightness` | 1 byte | `00` (0%) a `64` (100%). | Suportado | Suportado | CONFIRMADO EM AMBOS |
-| **`0x46`** | `LEDSpeed` | 1 byte | `00` (0%) a `64` (100%). | Suportado | Não testado f. | CONF. FISICAMENTE NO STICK |
-| **`0x49`** | `BackLightMode` | 1 byte | `00`=OFF, `01`=ON. | Suportado | Sem hardware f. | CONF. FISICAMENTE NO STICK |
-| **`0x48`** | `stageLightNum` | 1 byte | Int (somente no `AA 32`). | Notifica | Notifica | CONFIRMADO PELO APK |
-| **`0x4A`** | `supportPatterns`| N bytes | Array de hex (somente no `AA 32`). | Notifica | Notifica | CONFIRMADO EM AMBOS |
+O protocolo permite concatenar múltiplos campos TLV no mesmo pacote.
 
 ---
 
-## 5. PATTERNS (`0x31`)
+## 3. Identificadores de Comando (Command IDs)
 
-Mapeamento cruzado da enumeração do APK com o array divulgado pelo hardware via `0x4A` e com os testes de laboratório. Não foi testado todos, os vazios significam "Não Testado".
-
-| ID Hex | Nome no APK | No `0x4A` Stick | Físico Stick | No `0x4A` Beam | Físico Beam |
-|---|---|:---:|:---:|:---:|:---:|
-| `00` | OFF | - | - | - | - |
-| `01` | ROCK | - | - | - | - |
-| `02` | NEON | Sim | - | Sim | CONFIRMADO |
-| `03` | CLUB | - | - | - | - |
-| `04` | FLOW | - | - | - | - |
-| `05` | RIPPLE | - | - | - | - |
-| `06` | CROSS | - | - | - | - |
-| `07` | FLASH | - | - | - | - |
-| `08` | CUSTOM_RANDOM| Sim | - | Sim | - |
-| `09` | LOOP | Sim | - | Sim | CONFIRMADO |
-| `0A` | BOUNCE | Sim | - | Sim | CONFIRMADO |
-| `0B` | TRIM | Sim | - | Sim | - |
-| `0C` | SWITCH | Sim | - | Sim | - |
-| `0D` | FREEZE | Sim | - | Sim | CONFIRMADO |
-| `10` | OCEAN | Sim | - | - | - |
-| `11` | AURORA | Sim | - | - | - |
-| `12` | BLOSSOM | Sim | - | - | - |
-| `13` | SUNRISE | - | - | - | - |
-| `14` | FIREPLACE | - | - | - | - |
-| `15` | STATIC | - | CONFIRMADO | - | Não Suportado |
-| `16` | GRAVITY | Sim | CONFIRMADO | - | Recusado |
-| `17` | LIGHTNING | Sim | CONFIRMADO | - | Recusado |
-| `18` | GLITCH | Sim | CONFIRMADO | - | Recusado |
-| `19` | CAMPFIRE | Sim | - | - | - |
-| `1A` | UNIVERSE | Sim | - | - | - |
-| `1B` | FIREFLY | Sim | - | - | - |
-| `1F` | BEER | Sim | - | - | - |
-| `20` | STORM | Sim | - | - | - |
-| `21` | HOVER | Sim | - | - | - |
-| `22` | SKY | Sim | - | - | - |
-
-*Aviso legal: O fato de constar na Tabela Enum do APK não significa que a caixa possua ou execute a animação, o fator de segurança é o array dinâmico `0x4A`.*
+| Command ID | Nome no APK | Tipo | Finalidade |
+|---|---|---|---|
+| `0x33` | `ReqSetLightInfo` | Escrita | Configura parâmetros de iluminação (brilho, cor, modo, velocidade). |
+| `0x32` | `PLLightInfo` | Notificação | Notifica estado atual da iluminação e modos suportados. |
+| `0x31` | `ReqLightInfo` | Escrita | Polling: envia `AA 31 00` para solicitar emissão imediata de `AA 32`. |
+| `0x13` | `ReqSetDevInfo` | Escrita | Configura parâmetros de hardware (detecção de som). |
+| `0x12` | *(Device Info)* | Notificação | Notifica metadados de hardware (endereço MAC, versão de firmware, número de série). |
+| `0x11` | `ReqDevInfo` | Escrita | Polling: envia `AA 11 00` para solicitar emissão imediata de `AA 12`. |
+| `0x9D` | `ReqBatteryStatus` | Escrita | Solicita o nível de carga de bateria (PartyLight Beam). |
+| `0x9E` | *(Battery Info)* | Notificação | Retorna o status de carga da bateria. |
 
 ---
 
-## 6. DIFERENÇAS STICK × BEAM
+## 4. Campos de Iluminação (`AA 33` e `AA 32`)
 
-1. **Hardware Categórico:**
-   - **PartyLight Stick:** Um "bastão" de múltiplos LEDs orientados à pixels e uma luz branca oposta fixa para a parede (Luz Traseira).
-   - **PartyLight Beam:** Um projetor óptico de refração motora em teto/parede, sem luz traseira e sem modo "pixels estáticos". 
-2. **Looping e Static (Cor Fixa):**
-   - Apenas a Stick obedeceu e consolidou o uso do comando `0x36 01 01` atrelado ao Pattern `0x15` (STATIC).
-   - A Beam **ignorou** fisicamente os modos de looping sólido porque não suporta `0x15`. Nela, cores RGB base são passadas para seus modos de refração e estrobo fluídos (ex: `0x02` NEON colorido).
-3. **Exclusividade de Pattern:**
-   - A Beam se limitou fisicamente a 7 modos específicos pelo seu `0x4A`. Ao tentarmos enviar modos exclusivos da Stick (como Gravity `0x16`), a Beam ativou um fallback interno aleatório (ignorou e tocou padrão).
-4. **Alimentação:** A Beam provou responder ao pedido de Bateria (`AA 9D`), enquanto a Stick é energia de tomada (Cabo Fixo).
+| Field ID | Nome no APK | Tamanho | Valores / Faixa | Suporte Stick | Suporte Beam | Status |
+|---|---|---|---|:---:|:---:|---|
+| `0x31` | `Pattern` | 1 byte | `0x00` a `0x22` (ver tabela de modos). | Sim | Subconjunto | Confirmado em ambos |
+| `0x32` | `Color` | 3 bytes | `[RR, GG, BB]` em hexadecimal. | Sim | Sim | Confirmado em ambos |
+| `0x36` | `PatternLooping` | 1 byte | `0x00` = Color Loop, `0x01` = Static Color. | Sim | Não | Confirmado no Stick |
+| `0x45` | `lightBrightness`| 1 byte | `0x00` (0%) a `0x64` (100%). | Sim | Sim | Confirmado em ambos |
+| `0x46` | `lEDMovementSpeed`| 1 byte | `0x00` a `0x64`. | Sim | Não testado f. | Confirmado no Stick |
+| `0x49` | `backLightMode` | 1 byte | `0x00` = OFF, `0x01` = ON. | Sim | Não possui | Confirmado no Stick |
+| `0x47` | `speakerIDtoLight`| 2 bytes | 2 bytes em hexadecimal. | - | - | Hipótese (posicionamento de palco) |
+| `0x48` | `stageLightNum` | 1 byte | Inteiro indicando total de luminárias. | Somente leitura | Somente leitura | Observado no APK |
+| `0x4A` | `supportPatterns`| N bytes | Array de IDs de modos suportados. | Somente leitura | Somente leitura | Confirmado em ambos |
 
 ---
 
-## 7. AA 13 / HARDWARE
+## 5. Campos de Hardware (`AA 13` e `AA 12`)
 
-Comandos de comportamento que controlam features de hardware embarcado:
-
-| Field ID | Nome Interno | Tamanho | Valores | Função Física | Evidência Final |
+| Field ID | Nome no APK | Tamanho | Valores / Faixa | Finalidade | Status |
 |---|---|---|---|---|---|
-| **`0x45`** | `soundDetection`| 1 byte | `00`=OFF, `01`=ON. | Reagir microfone interno à som local. | CONFIRMADO PELO APK + HCI |
-| **`0x46`** | `danceMode` | 1 byte | `00`=OFF, `01`=ON. | Mapeado no APK. (Função final desconhecida). | CONFIRMADO PELO APK |
-| **`0x3C`** | `AuracastMode` | 1 byte | Não testado. | Gerencia Bluetooth LE Audio Broadcast. | CONFIRMADO PELO APK |
+| `0x45` | `soundDetection` | 1 byte | `0x00` = OFF, `0x01` = ON. | Habilita reação ao som via microfone interno. | Confirmado no Stick |
+| `0x46` | `danceMode` | 1 byte | `0x00` = OFF, `0x01` = ON. | Modo de dança documentado no APK. | Hipótese (efeito prático não determinado) |
+| `0x3C` | `AuracastMode` | 1 byte | Não testado. | Gestão de broadcast LE Audio com PartyBoxes. | Hipótese |
 
 ---
 
-## 8. EXEMPLOS DE CÓDIGO (HEX Payload)
+## 6. Diferenças arquiteturais entre Stick e Beam
 
-Estes são pacotes prontos testados com sucesso absoluto:
-
-**Brilho para 50%:**
-`AA 33 04 00 45 01 40`
-
-**Modo de Efeito Gravity:**
-`AA 33 04 00 31 01 16`
-
-**Cor Base para Azul:**
-`AA 33 06 00 32 03 00 00 FF`
-
-**Luz Traseira OFF:**
-`AA 33 04 00 49 01 00`
-
-**Comando Composto Cor Fixa (STATIC + VERMELHO + LOOP_STATIC) [Tamanho 12]:**
-`AA 33 0C 00 31 01 15 32 03 FF 00 00 36 01 01`
-
-**Comando Envio de Hardware - Reação ao Som OFF (Header 13):**
-`AA 13 04 00 45 01 00`
+1. **PartyLight Stick:**
+   - Arranjo vertical de LEDs com resolução espacial em 360 graus.
+   - Possui LED traseiro dedicado de luz branca (`0x49`).
+   - Suporta modo de cor fixa uniforme (`0x15` com `0x36 = 0x01`).
+   - Suporta efeitos com gradiente e transição vertical (`CAMPFIRE`, `GRAVITY`, `LIGHTNING`).
+2. **PartyLight Beam:**
+   - Projetor óptico motorizado voltado para reflexão em superfícies.
+   - Não possui LED traseiro.
+   - Divulga apenas 7 modos no array `0x4A` e ignora o modo estático `0x15`. Comandos de cor devem ser combinados com modos dinâmicos como `NEON` (`0x02`), `LOOP` (`0x09`) ou `BOUNCE` (`0x0A`).
+   - Possui bateria interna e suporta requisição de carga via `AA 9D`.
 
 ---
 
-## 9. AINDA NÃO CONFIRMADO (LIMITAÇÕES)
+## 7. Exemplos de Enquadramento
 
-Estas lacunas devem ser compreendidas no futuro via análise avançada ou capturas do JBL One autênticas. Não implementar métodos fechados para eles ainda:
+- **Brilho para 50% (`0x40`):**
+  `AA 33 04 00 45 01 40`
 
-1. **`0x47` (SpeakerIDtoLight):** Envia uma string Hex de 2 bytes no Header `AA 33`. Hipótese: Controle de agrupamento Estéreo/Stage de múltiplas PartyLights (Direita vs Esquerda).
-2. **Opcodes `0x25` a `0x2A` (DFU OTA):** Comandos perigosos descobertos no APK (DfuStart, DfuSetData, DfuApply). Não devemos invocar acidentalmente.
-3. **`0x46` no Hardware:** O `danceMode` do `AA 13`. Faltam testes puramente comportamentais para diferenciar seu efeito em oposição à Detecção de Som.
-4. **`0x3C` (Auracast):** Faltam caixas PartyBox habilitadas para testarmos sincronia física.
+- **Cor Vermelha pura (`FF 00 00`):**
+  `AA 33 06 00 32 03 FF 00 00`
 
+- **Luz traseira ligada:**
+  `AA 33 04 00 49 01 01`
+
+- **Comando Composto (Cor sólida Vermelha no Stick):**
+  `AA 33 0C 00 31 01 15 32 03 FF 00 00 36 01 01`
+
+- **Detecção de som desligada:**
+  `AA 13 04 00 45 01 00`

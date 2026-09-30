@@ -1,26 +1,38 @@
-# Hipóteses e Campos Desconhecidos (Atualizado pós-APK)
+# Hipóteses e Campos em Investigação
 
-*A maior parte das nossas hipóteses antigas foi promovida para `confirmed.md` graças à engenharia reversa do APK real da JBL. O que sobrou aqui são as pontas soltas finais do protocolo.*
+Registro dos campos identificados na engenharia reversa do aplicativo JBL One que ainda dependem de validação experimental.
 
-## 1. Campos Desconhecidos do Hardware (`ReqSetDevInfo` / `AA 13`)
+---
 
-### O misterioso Dance Mode (`0x46`)
-- **Descoberta no APK:** O campo `0x46` enviado pelo header `AA 13` recebe um enum `Switch` (0 = OFF, 1 = ON) mapeado na variável `danceMode`.
-- **Dúvida:** O que fisicamente muda na caixa quando isso está ativado? A detecção de som (`0x45`) já faz ela piscar. O que o "Dance Mode" adiciona? 
+## 1. Campos de Hardware (`AA 13`)
 
-### Auracast Mode (`0x3C`)
-- **Descoberta no APK:** Recebe valores mapeados de `AuracastMode`.
-- **Hipótese:** Auracast é a tecnologia Bluetooth LE Audio de broadcast usada nas novas PartyBoxes para conectar múltiplas caixas infinitamente. É provável que esse campo dite se a luz deve seguir o broadcast principal ou não.
+### Modo de Dança (`danceMode` / `0x46`)
+- **Origem:** Campo booleano (`0x00` = OFF, `0x01` = ON) identificado na classe `ReqSetDevInfo` do APK.
+- **Hipótese:** Pode alterar a sensibilidade de resposta do microfone interno ou modificar o padrão rítmico das animações com som ativo.
+- **Experimento pendente:** Enviar `AA 13 04 00 46 01 01` com áudio ambiente e comparar o comportamento visual em relação ao modo de detecção de som padrão (`0x45`).
 
-## 2. Campos Desconhecidos da Luz (`ReqSetLightInfo` / `AA 33`)
+### Modo Auracast (`AuracastMode` / `0x3C`)
+- **Origem:** Mapeado no código do APK em relação ao suporte a Bluetooth LE Audio Broadcast.
+- **Hipótese:** Define se a luminária opera sincronizada ao fluxo Auracast de caixas de som JBL PartyBox compatíveis.
+- **Limitação:** Requer hardware transmissor PartyBox compatível para testes.
 
-### Identificador de Caixa (`0x47` / `speakerIDtoLight`)
-- **Descoberta no APK:** O campo `0x47` carrega 2 bytes que o código converte de/para Hex Strings.
-- **Hipótese:** Quando múltiplas PartyLights (ou PartyBoxes) são conectadas no mesmo palco (Stage), a JBL envia um "papel" ou "posição" para cada luz (ex: Direita, Esquerda, Traseira). Precisamos capturar a comunicação com 2 ou mais dispositivos pareados no App oficial para testar como o app os enumera.
+---
 
-## 3. Opcodes Complexos da Engenharia Reversa (Dfu / OTA)
-- **`ReqDfuStartCommand` (ID 37 / `0x25`)**
-- **`ReqDfuSetDataCommand` (ID 38 / `0x26`)**
-- **`ReqDfuCancelCommand` (ID 40 / `0x28`)**
-- **`ReqDfuApplyCommand` (ID 42 / `0x2A`)**
-- **Hipótese:** Estes são os comandos Over-The-Air (OTA) Firmware Update. Nunca devemos enviar esses headers acidentalmente no laboratório sob risco de corromper o firmware das PartyLights.
+## 2. Campos de Iluminação (`AA 33`)
+
+### Identificador de Palco (`speakerIDtoLight` / `0x47`)
+- **Origem:** O campo carrega 2 bytes codificados como string hexadecimal.
+- **Hipótese:** Utilizado pelo aplicativo oficial para atribuir uma posição espacial à luminária quando múltiplas unidades estão agrupadas no mesmo ambiente (ex: canal esquerdo, canal direito).
+- **Experimento pendente:** Capturar tráfego BLE com 2 ou mais PartyLights pareadas simultaneamente no JBL One.
+
+---
+
+## 3. Comandos de Atualização de Firmware (DFU / OTA)
+
+Os seguintes Command IDs foram identificados no APK e correspondem a rotinas de atualização de firmware:
+- `0x25` (`ReqDfuStartCommand`)
+- `0x26` (`ReqDfuSetDataCommand`)
+- `0x28` (`ReqDfuCancelCommand`)
+- `0x2A` (`ReqDfuApplyCommand`)
+
+**Aviso operacional:** Estes comandos não devem ser transmitidos aos dispositivos em testes de controle para evitar corrupção da memória flash do hardware.

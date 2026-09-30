@@ -1,46 +1,53 @@
-# Catálogo de Efeitos - JBL PartyLight Stick & Beam
+# Catálogo de Efeitos - JBL PartyLight Stick e Beam
 
-Este documento cataloga e descreve o comportamento visual dos modos de luz nativos das caixas JBL PartyLight Stick e Beam. Como não há documentação técnica detalhada fornecida pela JBL, as descrições baseiam-se em padrões da indústria de iluminação LED e engenharia reversa.
-
-## Efeitos Compartilhados (Stick & Beam)
-
-Estes são os efeitos básicos presentes em ambos os hardwares. Eles tendem a ser mais rítmicos e geométricos.
-
-| ID | Nome PT-BR | Nome EN | Descrição Visual Esperada |
-|----|------------|---------|---------------------------|
-| 0x02 | **Neon** | NEON | Transições de cores suaves tipo fade, iluminando toda a área. Ideal para momentos contínuos de alta energia (Drop/Rave). |
-| 0x09 | **Repetição** | LOOP | Efeito de "Chaser" (perseguição) onde a cor percorre o LED em ciclos contínuos (subindo, descendo ou girando). |
-| 0x0A | **Salto** | BOUNCE | Blocos de luz ou pulsos que "quicam" de uma ponta à outra, ou do centro para as bordas. |
-| 0x0B | **Ajuste** | TRIM | Comportamento similar a um VU Meter (equalizador), onde a barra de luz sobe e desce preenchendo o espaço de acordo com a intensidade do som. |
-| 0x0C | **Mudança** | SWITCH | Cortes secos ("hard cuts") entre blocos de cores, sem transição suave. Excelente para strobo colorido ou batidas secas. |
-| 0x0D | **Congelar** | FREEZE | Luzes estáticas, travadas na última cor/frame recebido. Não possui animação interna, funcionando como um canhão de luz fixa. |
+Mapeamento dos modos de animação disponíveis no firmware dos dispositivos JBL PartyLight Stick e JBL PartyLight Beam.
 
 ---
 
-## Efeitos Exclusivos (Apenas Stick)
+## 1. Efeitos suportados por ambos os modelos (Stick e Beam)
 
-A PartyLight Stick possui uma área de LEDs em formato de torre/bastão de 360 graus, permitindo animações de pixels muito mais complexas e orgânicas (simulação de física e natureza).
+Estes modos estão presentes tanto na lista do PartyLight Stick quanto na lista do PartyLight Beam (campo `0x4A` de `AA 32`):
 
-| ID | Nome PT-BR | Nome EN | Descrição Visual Esperada |
-|----|------------|---------|---------------------------|
-| 0x11 | **Aurora** | AURORA | Ondas lentas em gradiente simulando uma Aurora Boreal (geralmente tons de verde, azul e roxo), movimento muito suave e relaxante. |
-| 0x12 | **Florada** | BLOSSOM | Pulsos de luz que começam no centro e se expandem suavemente para as pontas, lembrando o desabrochar de uma flor (rosas, púrpuras). |
-| 0x10 | **Mar** | OCEAN | Ondulações contínuas de baixo para cima ou vice-versa em tons de azul e ciano. |
-| 0x22 | **Céu** | SKY | Gradientes lentos e preenchimento total simulando variações do céu, possivelmente transições bem longas. |
-| 0x19 | **Fogueira** | CAMPFIRE | Simulação de fogo! Cores quentes (vermelho, laranja, amarelo) oscilando ("flickering") na base e subindo gradativamente, imitando chamas. |
-| 0x20 | **Tempestade** | STORM | Fundo geralmente mais escuro (nuvens) com flashes brancos intensos e aleatórios, reagindo rapidamente ao som. |
-| 0x17 | **Relâmpago**| LIGHTNING | Similar a tempestade, mas com flashes estroboscópicos mais diretos e definidos (raios rasgando o bastão). |
-| 0x1B | **Vagalume** | FIREFLY | Pontos isolados de luz verde/amarelada acendendo e apagando suavemente de forma caótica pelo bastão. |
-| 0x1A | **Universo** | UNIVERSE | Cores profundas (azul marinho/roxo) com pontos piscantes ("twinkles") brilhantes simulando estrelas, movimento espacial lento. |
-| 0x21 | **Flutuar** | HOVER | Bolhas de luz maiores subindo e descendo com física de gravidade suave. |
-| 0x1F | **Cerveja** | BEER | Cores douradas/amarelas com pontinhos de luz subindo constantemente do chão para o topo, simulando o gás de um copo de cerveja. |
-| 0x16 | **Gravidade** | GRAVITY | Blocos de luz ou "chuva de meteoros" que caem de cima para baixo constantemente (estilo Matrix). |
-| 0x18 | **Falha** | GLITCH | Falhas visuais, ruídos aleatórios, separação forçada de canais RGB, transições caóticas sem padrão definido. |
+| ID (Hex) | Nome (APK) | Nome exibido na interface | Comportamento visual observado |
+|---|---|---|---|
+| `0x02` | NEON | Neon | Transição suave e contínua de cores em gradiente. |
+| `0x09` | LOOP | Repetição | Movimento cíclico de luz percorrendo o dispositivo. |
+| `0x0A` | BOUNCE | Salto | Pulso de luz que rebate entre as extremidades. |
+| `0x0B` | TRIM | Ajuste | Animação em barra preenchida em estilo medidor VU. |
+| `0x0C` | SWITCH | Mudança | Alternância rápida e direta entre blocos de cor sem fade. |
+| `0x0D` | FREEZE | Congelar | Luz estática na última cor configurada, sem movimento. |
 
 ---
 
-## Observações de Controle
+## 2. Efeitos exclusivos do PartyLight Stick
 
-1. A cor desses modos é afetada pelos comandos de cor RGB. Em modos que possuem "cores obrigatórias" (como Cerveja, Fogueira, Universo), enviar uma cor manual pode re-tingir (tint) o efeito ou ser ignorado (precisa ser testado fisicamente).
-2. A velocidade dos modos afeta o ritmo da animação interna.
-3. Se a "Detecção de Som" (`AA 12 49 01 01`) estiver ativa, todos esses padrões tornam-se paramétricos à batida musical captada pelo microfone (ex: o Fogo pula quando dá um grave).
+Devido à disposição linear de LEDs em torre (360 graus), o PartyLight Stick suporta animações que dependem de resolução espacial vertical:
+
+| ID (Hex) | Nome (APK) | Nome exibido na interface | Comportamento visual |
+|---|---|---|---|
+| `0x15` | STATIC | Cor Sólida | Iluminação uniforme em todo o bastão. Requer `PatternLooping = 0x01` (`0x36`). Não suportado pelo Beam. |
+| `0x10` | OCEAN | Mar | Movimento ondulatório lento em tons frios. |
+| `0x11` | AURORA | Aurora | Gradiente lento vertical simulando aurora boreal. |
+| `0x12` | BLOSSOM | Florada | Expansão de luz a partir da região central para as pontas. |
+| `0x16` | GRAVITY | Gravidade | Blocos de luz descendo continuamente em cascata. |
+| `0x17` | LIGHTNING | Relâmpago | Flashes estroboscópicos de alta intensidade em intervalos irregulares. |
+| `0x18` | GLITCH | Falha | Padrão visual irregular com cortes rápidos. |
+| `0x19` | CAMPFIRE | Fogueira | Simulação de chamas oscilando a partir da base do bastão. |
+| `0x1A` | UNIVERSE | Universo | Pontos de brilho intermitente sobre fundo escuro. |
+| `0x1B` | FIREFLY | Vagalume | Pontos individuais acesos em posições aleatórias. |
+| `0x1F` | BEER | Cerveja | Pontos de luz subindo da base simulando efervescência. |
+| `0x20` | STORM | Tempestade | Fundo escuro com relâmpagos intermitentes. |
+| `0x21` | HOVER | Flutuar | Blocos luminosos oscilando com aceleração e desaceleração. |
+| `0x22` | SKY | Céu | Transições graduais entre tons de azul e branco. |
+
+---
+
+## 3. Observações operacionais
+
+1. **Interação com comandos de cor RGB (`0x32`):**
+   - Na maioria dos modos dinâmicos (como `NEON`, `LOOP`, `BOUNCE`), a cor base enviada redefine a paleta de cores dominante da animação.
+   - Em modos temáticos (como `CAMPFIRE` ou `BEER`), a alteração de cor pode ser parcialmente mesclada com a animação de fábrica ou ignorada pelo firmware.
+2. **Interação com a velocidade (`0x46`):**
+   - O valor de velocidade (`0x00` a `0x64`) acelera ou desacelera a taxa de atualização da animação interna.
+3. **Reação ao som (`AA 13` / `0x45 01 01`):**
+   - Quando ativada, a animação selecionada passa a modular sua intensidade e pulso de acordo com os sinais captados pelo microfone embutido no hardware.

@@ -1,46 +1,31 @@
-# TODO - JBLController
+# Lista de Trabalho (TODO)
 
-## Protocolo & Engenharia Reversa BLE (CONCLUÍDO ✅)
-- [x] Decodificar estrutura de enquadramento (Framing com `0xAA` + Opcode + Comprimento LE).
-- [x] Mapear arquitetura TLV das notificações e comandos de escrita (`AA 33`, `AA 32`, `AA 13`, `AA 12`).
-- [x] Mapear diferenças de hardware físico e limitações de efeitos entre Stick e Beam.
-- [x] Validar controle bidirecional completo de brilho, velocidade, cores RGB, luz traseira e som.
+## Em andamento
 
-## Backend em Python (`src/jbl_controller/`) (CONCLUÍDO ✅)
-- [x] Implementar parser modular e agnóstico do protocolo (`protocol.py`).
-- [x] Implementar cliente BLE assíncrono unificado com Auto-Healing anti-quedas (`partylight.py`).
-- [x] Implementar orquestrador multi-luz com hardware fallbacks (`stage.py`).
-- [x] Implementar máquina de estado com fila de cores circular e macros assíncronas (`controller.py`).
-- [x] Construir servidor WebSockets full-duplex de baixa latência (`web_app.py`).
+- [ ] Ajustar debounce e limitação de taxa (rate limiting) no envio de comandos BLE durante movimentações rápidas de faders/jog wheel para evitar acúmulo na fila do Windows.
+- [ ] Implementar leitura do status de bateria da PartyLight Beam (`AA 9D` / `AA 9E`) e exibir indicador de carga na interface web.
 
-## FARIA Light FX & Automação de Timecode (CONCLUÍDO ✅)
-- [x] Persistência SQLite para faixas, aliases e Cues com timestamps em milissegundos (`faria_db.py`).
-- [x] Scheduler de alta precisão (~50 Hz) com compensação de latência (`faria_engine.py`).
-- [x] Retrospectiva inteligente de timecode (Seek / Play / Scrub).
-- [x] Suporte a Backspins e saltos rápidos na linha do tempo (Backspin-proof).
-- [x] Modo Random de cor viva na troca de faixas não mapeadas.
-- [x] Cues personalizados com snapshots de cor e efeitos salvos em formato JSON estruturado.
+---
 
-## Plugin VirtualDJ C++ (`virtualdj_plugin/`) (CONCLUÍDO ✅)
-- [x] Desenvolver plugin DSP nativo em C++ baseado no SDK oficial do VirtualDJ 8.
-- [x] Thread de telemetria assíncrona UDP a 30 FPS sem travar o loop de áudio.
-- [x] Extração de tempo decorrido oficial imune a preferências visuais de interface (`"get_time elapsed"`).
-- [x] Transmissão de BPM, pitch, volume, crossfader e estado de reprodução.
-- [x] Rastreamento de batida absoluta matemática e imune a loops de compasso (`(time - firstbeat) / 60000 * bpm`).
-- [x] Extração e transmissão dos graves dos decks (`deck 1 eq_low` e `deck 2 eq_low`) E dos filtros bipolares (`filter`).
-- [x] Lógica de histerese e desempate de Master Deck por equalização de graves no Python (`playback.py`).
-- [x] Script de compilação facilitado em 1 clique (`build.bat`).
+## Próximos passos
 
-## Frontend UI (`static/index.html`) (CONCLUÍDO ✅)
-- [x] Layout estilo mesa de DJ com tema Dark e Color Wheel canvas interativa.
-- [x] Faders de brilho e velocidade em tempo real com broadcast bidirecional.
-- [x] Botões rápidos para cores estáticas (`RED`, `GREEN`, `BLUE`).
-- [x] Painel de criação e listagem formatada de Cues personalizados.
-- [x] Tradução dinâmica de nomes de efeitos de fábrica para Português (`EFFECT_NAMES_PT`).
-- [x] Sincronia de estado do checkbox de modo Random e Seguir Cues com o servidor.
+- [ ] Criar rotina de exportação e importação de Cues de faixas em arquivos JSON portáveis para permitir backup e compartilhamento de shows.
+- [ ] Adicionar modo de segurança operacional ("Modo Live"): se a comunicação UDP com o VirtualDJ for interrompida por mais de 2 segundos durante reprodução, desativar o avanço por relógio local (mock) e manter a iluminação estática ou em blackout.
+- [ ] Implementar backoff exponencial na rotina de reconexão do `partylight.py` para reduzir consumo de CPU caso uma luminária seja desligada.
+- [ ] Adicionar suporte a backup automático do banco `faria_fx.db` na inicialização do serviço.
 
-## Inovações Futuras 🚀
-- [ ] **Beat Detection Local / FFT:** Análise em tempo real do stream de áudio do sistema para disparo de efeitos rítmicos sem necessidade de marcação manual prévia.
-- [ ] **Integração MIDI:** Suporte a pads físicos (Launchpad, Akai APC, etc.) usando a biblioteca `mido`.
-- [ ] **Exportação & Importação de Cues:** Salvar e carregar mapas completos de timecode de sets em arquivos JSON portáveis.
-- [ ] **Standalone Packaging:** Empacotar a aplicação em executável único com PyInstaller ou PyWebView.
+---
+
+## Investigação
+
+- [ ] Analisar o comportamento prático do campo `danceMode` (`0x46` em `AA 13`): verificar se altera a sensibilidade do microfone ou a dinâmica dos efeitos com áudio.
+- [ ] Capturar tráfego de múltiplas luminárias operando em conjunto no aplicativo JBL One para investigar o uso do campo `0x47` (`speakerIDtoLight`).
+- [ ] Avaliar se existe comando dedicado para controle de canais de cor independentes nos segmentos da torre do PartyLight Stick.
+
+---
+
+## Ideias futuras
+
+- [ ] Integração com controladores MIDI físicos (Launchpad, Akai APC) via biblioteca `mido` para disparo manual de presets e macros.
+- [ ] Transiente e detecção de batidas local via análise FFT do fluxo de áudio do sistema (independente de timecode).
+- [ ] Empacotamento da aplicação em executável único para Windows (PyInstaller / PyWebView).

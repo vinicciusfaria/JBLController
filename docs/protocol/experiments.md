@@ -1,50 +1,63 @@
-# Experimentos
+# Registro de Experimentos BLE
 
-## Experimentos Realizados
-
-### Envio Direto de Brilho
-- **Comando enviado:** `45 01 40` (diretamente para a characteristic de escrita).
-- **Resultado:** O Stick não respondeu.
-- **Conclusão:** `45 01 XX` não é, pelo menos isoladamente, um comando de controle funcional.
-
-## Próximos Experimentos
-
-### Laboratório da Luz Traseira (AA 13)
-**Objetivo:** Confirmar fisicamente se o comando de controle da luz traseira exige o header `AA 13`.
-**Método:**
-1. Modificar o script de controle para enviar um pacote usando `AA 13 04 00 45 01 00` e `... 01`.
-2. Registrar o comportamento físico da luz traseira do Stick.
+Histórico de testes e experimentos controlados realizados para decodificação do protocolo das luminárias JBL PartyLight.
 
 ---
 
-## Experimentos Concluídos
+## Experimento 1: Envio Direto de Comandos Raw (Sem Framing)
 
-### Laboratório Físico Inicial (0x46, 0x32, 0x31, 0x48, etc)
-**Objetivo:** Validar os principais payloads capturados via `ble_control.py`.
-**Resultado:** SUCESSO ABSOLUTO. Testes registrados em `lab_results_20260920_171420.txt`.
-**Descobertas Físicas Confirmadas:**
-- **Cor (0x32):** `AA 33 06 00 32 03 RR GG BB` funciona perfeitamente.
-- **Modo (0x31):** Alterna com sucesso os efeitos de luz da PartyLight.
-- **Velocidade (0x46):** Reagiu exatamente de lento (`00`) para rápido (`64`).
-**Refutações:**
-- O envio do payload de estado da luz traseira (`48 01 01`) usando o header padrão (`AA 33 04 00`) não teve efeito algum. Isso indica forte probabilidade de que a luz traseira seja realmente tratada como a zona `AA 13` e use o código de brilho `45` de forma separada.
+- **Data:** 20/09/2026
+- **Objetivo:** Verificar se o hardware aceita comandos simples de TLV (ex: `45 01 40` para ajuste de brilho a 50%) diretamente na característica de escrita `...0002`.
+- **Resultado:** O PartyLight Stick não respondeu e o estado permaneceu inalterado.
+- **Conclusão:** O envio de TLVs isolados sem cabeçalho não é interpretado pelo dispositivo. O firmware exige enquadramento com byte de sincronização e tamanho.
 
 ---
 
-## Experimentos Concluídos
+## Experimento 2: Análise de HCI Snoop (`btsnoop_hci.log`)
 
-### Controle Físico de Brilho
-**Objetivo:** Confirmar se o envio do pacote com o framing descoberto altera o brilho físico.
-**Resultado:** SUCESSO. Testado e validado!
-**Descobertas:** O envio de `AA 33 04 00 45 01 40` via Write Command (sem resposta) para a characteristic `...0002` controlou com sucesso o hardware, colocando o brilho em ~50%. Todo o caminho de framing e direcionamento GATT foi comprovado na prática.
+- **Data:** 20/09/2026
+- **Objetivo:** Identificar o formato exato dos pacotes de escrita enviados pelo aplicativo móvel JBL One.
+- **Resultado:**
+  - Operação utilizada: GATT Write Without Response (Opcode ATT `0x52`).
+  - Característica de escrita identificada no Handle `0x8003` / `0x0080`.
+  - Estrutura de enquadramento identificada: `[0xAA] [Command ID] [Length] [0x00] [Field ID] [Field Len] [Value...]`.
+  - Command IDs observados: `0x33` para iluminação e `0x13` para funções de hardware.
+- **Conclusão:** O formato de framing foi adotado como padrão em todo o controlador.
 
-### Análise de HCI Snoop (btsnoop_hci.log)
-**Objetivo:** Descobrir o ATT Write real enviado pelo aplicativo JBL ONE.
-**Resultado:** Análise feita com sucesso em 20/09/2026.
-**Descobertas:**
-1. A characteristic correta possui Handle `0x8003` (o log em little-endian mostrava `03 80`).
-2. É um ATT Write Command (Opcode `0x52`).
-3. O payload inclui um framing específico: `[Header] [Length] 00 [Opcode] [SubOpcode] [Data...]`. O Header frontal parece ser `AA 33` e o traseiro `AA 13`.
-4. Os Writes analisados casam com as ações de brilho, cores (RGB explícito), e toggle de funcionalidades.
-**Conclusão:** O envio direito de apenas `45 01 40` falhava devido à falta do Header, Byte de Tamanho, e Handle incorreto (se o usuário tentava no 0x0080 em vez do 0x8003).
+---
 
+## Experimento 3: Teste de Escrita Controlada de Brilho e Cores
+
+- **Data:** 20/09/2026
+- **Arquivo de registro:** `captures/lab_results_20260920_171420.txt` e `captures/lab_results_AA33_20260920_182106.txt`
+- **Objetivo:** Validar o envio com framing completo para controle de brilho, cor e velocidade no PartyLight Stick.
+- **Resultados:**
+  - **Brilho (`0x45`):** `AA 33 04 00 45 01 40` ajustou fisicamente o brilho para aproximadamente 50%. Valores de `0x00` a `0x64` confirmados.
+  - **Cor RGB (`0x32`):** `AA 33 06 00 32 03 RR GG BB` alterou a cor base para as componentes enviadas (testado com Vermelho, Verde e Azul).
+  - **Velocidade (`0x46`):** `AA 33 04 00 46 01 XX` alterou a taxa de animação dos efeitos.
+  - **Modo (`0x31`):** `AA 33 04 00 31 01 XX` alternou os padrões de iluminação da luminária.
+
+---
+
+## Experimento 4: Luz Traseira do Stick
+
+- **Data:** 20/09/2026
+- **Objetivo:** Confirmar o campo responsável por ligar e desligar a luz traseira no PartyLight Stick.
+- **Resultados:**
+  - O envio de `48 01 01` em `AA 33` não produziu efeito.
+  - O envio de `AA 33 04 00 49 01 01` ligou o LED traseiro; `AA 33 04 00 49 01 00` desligou.
+- **Conclusão:** A luz traseira é controlada pelo Field ID `0x49` sob o Command ID `0x33`. O campo `0x48` atua apenas como leitura em `AA 32` (`stageLightNum`).
+
+---
+
+## Experimento 5: Validação de Compatibilidade no PartyLight Beam
+
+- **Data:** 20/09/2026
+- **Arquivos de registro:** `captures/lab_beam_20260920_182938.txt` e `captures/lab_beam_20260920_183359.txt`
+- **Objetivo:** Avaliar como o PartyLight Beam responde aos comandos confirmados no Stick.
+- **Resultados:**
+  - Comandos de brilho (`0x45`) e cor RGB (`0x32`) foram aceitos normalmente.
+  - O modo estático `0x15` (`STATIC`) foi ignorado pelo Beam.
+  - O Beam reportou em `0x4A` uma lista restrita com 7 modos (`0x02`, `0x08`, `0x09`, `0x0A`, `0x0B`, `0x0C`, `0x0D`).
+  - O comando de luz traseira (`0x49`) não possui efeito visual no Beam (ausência física de LED traseiro).
+- **Conclusão:** O controlador deve aplicar fallback para o Beam, mapeando modos estáticos para modos dinâmicos compatíveis (como `NEON` ou `LOOP`).
